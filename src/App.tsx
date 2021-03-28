@@ -1,25 +1,48 @@
+import * as Highcharts from 'highcharts';
+import moment from 'moment-timezone';
 import React from 'react';
+import { createGlobalStyle } from 'styled-components';
+import reset from 'styled-reset';
 
-import logo from './logo.svg';
-import './App.css';
+import { Charts } from './components/Charts';
+import { FileDropZone } from './components/FileDropZone';
+import { FileStore, FileStoreContext } from './services/FileStore';
+import { MetricsStore, MetricsStoreContext } from './services/MetricsStore';
 
-const App: React.FC = () => (
-  <div className="App">
-    <header className="App-header">
-      <img src={logo} className="App-logo" alt="logo" />
-      <p>
-        Edit <code>src/App.tsx</code> and save to reload.
-      </p>
-      <a
-        className="App-link"
-        href="https://reactjs.org"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn React
-      </a>
-    </header>
-  </div>
-);
+const GlobalStyle = createGlobalStyle`
+  /* Global reset to remove all browser styling. */
+  ${reset}
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+  }
+`;
+
+Highcharts.setOptions({
+  time: {
+    timezoneOffset: moment.tz('America/Toronto').toDate().getTimezoneOffset(),
+  },
+});
+
+const App: React.FC = () => {
+  const [fileStore] = React.useState(() => new FileStore());
+  const [metricsStore] = React.useState(() => new MetricsStore(fileStore));
+
+  return (
+    <>
+      <GlobalStyle />
+      <FileStoreContext.Provider value={fileStore}>
+        <MetricsStoreContext.Provider value={metricsStore}>
+          <FileDropZone>
+            <Charts />
+          </FileDropZone>
+        </MetricsStoreContext.Provider>
+      </FileStoreContext.Provider>
+    </>
+  );
+};
 
 export default App;
