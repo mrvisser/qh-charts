@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "downlevelIteration": true,
     "emitDecoratorMetadata": true,
@@ -21,5 +22,6 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es5"
-  }
+  },
+  "include": ["src"]
 }
