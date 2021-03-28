@@ -7,6 +7,7 @@ import { FileStoreContext } from '../services/FileStore';
 const Container = styled.div`
   min-height: 100%;
   min-width: 100%;
+  position: relative;
 `;
 
 export const FileDropZone: React.FC = ({ children }) => {
