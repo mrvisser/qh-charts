@@ -4,9 +4,16 @@ import _ from 'lodash';
 import moment from 'moment-timezone';
 import React from 'react';
 import { map } from 'rxjs/operators';
+import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStoreContext } from '../services/MetricsStore';
+
+const ChartHeading = styled.h2`
+  font-weight: 500;
+  text-align: center;
+  text-transform: 'uppercase';
+`;
 
 export const Charts: React.FC = () => {
   const metricsStore = React.useContext(MetricsStoreContext);
@@ -36,50 +43,47 @@ export const Charts: React.FC = () => {
         ),
     [metricsStore],
   );
+  const [highchartsOptions, setHighchartsOptions] = React.useState<
+    {
+      title: string;
+      options: Highcharts.Options;
+    }[]
+  >();
+
+  React.useEffect(() => {
+    if (bloodGlucoseData !== undefined) {
+      const allValues = bloodGlucoseData.flatMap((bg) =>
+        bg.data.map((p) => p[1]),
+      );
+      const min = Math.min(4, ...allValues);
+      const max = Math.max(7, ...allValues);
+      const yMinMax = { max, min };
+      setHighchartsOptions(
+        bloodGlucoseData.map(({ data, day }) => {
+          const m = moment.tz(day, 'America/Toronto');
+          const xMinMax = {
+            max: m.endOf('day').toDate().getTime(),
+            min: m.startOf('day').toDate().getTime(),
+          };
+          return {
+            options: createHighchartsOptionsForDay(data, xMinMax, yMinMax),
+            title: m.format('dddd, MMMM, Do'),
+          };
+        }),
+      );
+    } else {
+      setHighchartsOptions(undefined);
+    }
+  }, [bloodGlucoseData]);
+
   return (
     <div>
-      {bloodGlucoseData !== undefined
-        ? bloodGlucoseData.map(({ day, data }) => {
+      {highchartsOptions !== undefined
+        ? highchartsOptions.map(({ title, options }) => {
             return (
-              <div key={day}>
-                <h2>
-                  {moment.tz(day, 'America/Toronto').format('dddd, MMMM Do')}
-                </h2>
-                <HighchartsReact
-                  highcharts={Highcharts}
-                  options={{
-                    chart: {
-                      type: 'spline',
-                    },
-                    colors: ['#6CF', '#39F', '#06C', '#036', '#000'],
-                    plotOptions: {
-                      series: {
-                        marker: {
-                          enabled: true,
-                        },
-                      },
-                    },
-                    series: [
-                      {
-                        data,
-                        name: 'Blood Glucose',
-                      },
-                    ],
-                    title: {
-                      text: '',
-                    },
-                    xAxis: {
-                      type: 'datetime',
-                    },
-                    yAxis: {
-                      max: 10,
-                      min: 2,
-                      title: {
-                        text: 'Blood Glucose (mmol/L)',
-                      },
-                    },
-                  }}
-                />
+              <div key={title}>
+                <ChartHeading>{title}</ChartHeading>
+                <HighchartsReact highcharts={Highcharts} options={options} />
               </div>
             );
           })
@@ -87,3 +91,66 @@ export const Charts: React.FC = () => {
     </div>
   );
 };
+
+function createHighchartsOptionsForDay(
+  data: (readonly [number, number])[],
+  xMinMax: { min: number; max: number },
+  yMinMax: {
+    min: number;
+    max: number;
+  },
+): Highcharts.Options {
+  return {
+    chart: {
+      type: 'spline',
+    },
+    colors: ['rgba(255, 102, 102, 1)'],
+    legend: {
+      enabled: false,
+    },
+    plotOptions: {
+      series: {
+        gapSize: 30 * 60 * 1000,
+        gapUnit: 'value',
+        marker: {
+          enabled: true,
+          radius: 3,
+        },
+      },
+    },
+    series: [
+      {
+        data,
+        name: 'mmol/L',
+        type: 'spline',
+      },
+    ],
+    title: {
+      text: '',
+    },
+    xAxis: {
+      ...xMinMax,
+      dateTimeLabelFormats: {
+        day: '%H:%M',
+      },
+      labels: {
+        rotation: -45,
+      },
+      type: 'datetime',
+    },
+    yAxis: {
+      ...yMinMax,
+      plotBands: [
+        {
+          color: 'rgba(87, 220, 140, 0.2)',
+          from: 4.1,
+          to: 6,
+        },
+      ],
+      tickInterval: 0.5,
+      title: {
+        text: '',
+      },
+    },
+  };
+}

@@ -1,5 +1,3 @@
-import * as Highcharts from 'highcharts';
-import moment from 'moment-timezone';
 import React from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import reset from 'styled-reset';
@@ -21,12 +19,6 @@ const GlobalStyle = createGlobalStyle`
     width: 100%;
   }
 `;
-
-Highcharts.setOptions({
-  time: {
-    timezoneOffset: moment.tz('America/Toronto').toDate().getTimezoneOffset(),
-  },
-});
 
 const Centered = styled.div`
   align-items: center;
