@@ -9,10 +9,23 @@ import styled from 'styled-components';
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStoreContext } from '../services/MetricsStore';
 
+const ChartsContainer = styled.div``;
+
+const ChartContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin: 0 20px;
+`;
+
 const ChartHeading = styled.h2`
-  font-weight: 500;
+  font-weight: 600;
+  margin: 5px 0 0 0;
   text-align: center;
-  text-transform: 'uppercase';
+  text-transform: uppercase;
+`;
+
+const Chart = styled.div`
+  flex: 1;
 `;
 
 export const Charts: React.FC = () => {
@@ -55,8 +68,8 @@ export const Charts: React.FC = () => {
       const allValues = bloodGlucoseData.flatMap((bg) =>
         bg.data.map((p) => p[1]),
       );
-      const min = Math.min(4, ...allValues);
-      const max = Math.max(7, ...allValues);
+      const min = Math.floor(Math.min(4, ...allValues));
+      const max = Math.ceil(Math.max(7, ...allValues));
       const yMinMax = { max, min };
       setHighchartsOptions(
         bloodGlucoseData.map(({ data, day }) => {
@@ -67,7 +80,7 @@ export const Charts: React.FC = () => {
           };
           return {
             options: createHighchartsOptionsForDay(data, xMinMax, yMinMax),
-            title: m.format('dddd, MMMM, Do'),
+            title: m.format('dddd, MMMM Do'),
           };
         }),
       );
@@ -77,18 +90,20 @@ export const Charts: React.FC = () => {
   }, [bloodGlucoseData]);
 
   return (
-    <div>
+    <ChartsContainer>
       {highchartsOptions !== undefined
         ? highchartsOptions.map(({ title, options }) => {
             return (
-              <div key={title}>
+              <ChartContainer key={title}>
                 <ChartHeading>{title}</ChartHeading>
-                <HighchartsReact highcharts={Highcharts} options={options} />
-              </div>
+                <Chart>
+                  <HighchartsReact highcharts={Highcharts} options={options} />
+                </Chart>
+              </ChartContainer>
             );
           })
         : undefined}
-    </div>
+    </ChartsContainer>
   );
 };
 
@@ -100,8 +115,33 @@ function createHighchartsOptionsForDay(
     max: number;
   },
 ): Highcharts.Options {
+  const values = data.map((p) => p[1]);
+  const dayMax = Math.max(...values);
+  const dayMin = Math.min(...values);
+  let label: Highcharts.SVGElement | undefined = undefined;
+
   return {
     chart: {
+      events: {
+        render() {
+          if (label !== undefined) {
+            label.destroy();
+            label = undefined;
+          }
+
+          if (dayMax !== undefined) {
+            label = this.renderer.label(dayMax.toString(), -100).add();
+            label.attr({
+              x: this.plotWidth + this.plotLeft,
+              y:
+                this.yAxis[0].toPixels(dayMax, false) -
+                label.getBBox().height / 2,
+            });
+          }
+        },
+      },
+      height: 225,
+      margin: [10, 50, 50, 50],
       type: 'spline',
     },
     colors: ['rgba(255, 102, 102, 1)'],
@@ -133,9 +173,6 @@ function createHighchartsOptionsForDay(
       dateTimeLabelFormats: {
         day: '%H:%M',
       },
-      labels: {
-        rotation: -45,
-      },
       type: 'datetime',
     },
     yAxis: {
@@ -147,6 +184,24 @@ function createHighchartsOptionsForDay(
           to: 6,
         },
       ],
+      plotLines: _.compact([
+        dayMax !== undefined
+          ? {
+              color: '#aaa',
+              dashStyle: 'Dot',
+              value: dayMax,
+              width: 2,
+            }
+          : undefined,
+        dayMin !== undefined
+          ? {
+              color: '#aaa',
+              dashStyle: 'Dot',
+              value: dayMin,
+              width: 2,
+            }
+          : undefined,
+      ]),
       tickInterval: 0.5,
       title: {
         text: '',

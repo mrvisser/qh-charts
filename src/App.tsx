@@ -12,11 +12,19 @@ const GlobalStyle = createGlobalStyle`
   /* Global reset to remove all browser styling. */
   ${reset}
 
+  @page {
+    margin: 0;
+  }
+
   html,
   body,
   #root {
     height: 100%;
     width: 100%;
+  }
+
+  body {
+    font-family: 'Poppins', 'Roboto', 'Helvetica Neue', sans-serif;
   }
 `;
 
