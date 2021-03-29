@@ -153,12 +153,12 @@ function createHighchartsOptionsForDay(
           }
 
           if (dayAvg !== undefined) {
-            maxLabel = this.renderer.label(dayAvg.toString(), -100).add();
-            maxLabel.attr({
+            avgLabel = this.renderer.label(dayAvg.toString(), -100).add();
+            avgLabel.attr({
               x: this.plotWidth + this.plotLeft,
               y:
                 this.yAxis[0].toPixels(dayAvg, false) -
-                maxLabel.getBBox().height / 2,
+                avgLabel.getBBox().height / 2,
             });
           }
         },
