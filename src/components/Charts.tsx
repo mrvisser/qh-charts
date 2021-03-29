@@ -117,26 +117,48 @@ function createHighchartsOptionsForDay(
 ): Highcharts.Options {
   const values = data.map((p) => p[1]);
   const dayMax = Math.max(...values);
+  const dayAvg =
+    values.length > 0
+      ? Math.round(
+          (values.reduce((acc, v) => acc + v, 0) * 10) / values.length,
+        ) / 10
+      : undefined;
   const dayMin = Math.min(...values);
-  let label: Highcharts.SVGElement | undefined = undefined;
+  let maxLabel: Highcharts.SVGElement | undefined = undefined;
+  let avgLabel: Highcharts.SVGElement | undefined = undefined;
 
   return {
     chart: {
       events: {
         render() {
-          if (label !== undefined) {
-            label.destroy();
-            label = undefined;
+          if (maxLabel !== undefined) {
+            maxLabel.destroy();
+            maxLabel = undefined;
+          }
+
+          if (avgLabel !== undefined) {
+            avgLabel.destroy();
+            avgLabel = undefined;
           }
 
           if (dayMax !== undefined) {
-            label = this.renderer.label(dayMax.toString(), -100).add();
-            label.attr({
+            maxLabel = this.renderer.label(dayMax.toString(), -100).add();
+            maxLabel.attr({
               style: 'font-weight: bold',
               x: this.plotWidth + this.plotLeft,
               y:
                 this.yAxis[0].toPixels(dayMax, false) -
-                label.getBBox().height / 2,
+                maxLabel.getBBox().height / 2,
+            });
+          }
+
+          if (dayAvg !== undefined) {
+            maxLabel = this.renderer.label(dayAvg.toString(), -100).add();
+            maxLabel.attr({
+              x: this.plotWidth + this.plotLeft,
+              y:
+                this.yAxis[0].toPixels(dayAvg, false) -
+                maxLabel.getBBox().height / 2,
             });
           }
         },
@@ -198,6 +220,16 @@ function createHighchartsOptionsForDay(
               dashStyle: 'Dot',
               value: dayMax,
               width: 2,
+              zIndex: 2,
+            }
+          : undefined,
+        dayAvg !== undefined
+          ? {
+              color: '#aaa',
+              dashStyle: 'Dash',
+              value: dayAvg,
+              width: 4,
+              zIndex: 2,
             }
           : undefined,
         dayMin !== undefined
@@ -206,6 +238,7 @@ function createHighchartsOptionsForDay(
               dashStyle: 'Dot',
               value: dayMin,
               width: 2,
+              zIndex: 2,
             }
           : undefined,
       ]),
