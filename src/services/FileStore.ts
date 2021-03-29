@@ -80,11 +80,7 @@ export class FileStore {
     contentType: string,
     readData: () => Promise<ArrayBuffer>,
   ): Promise<File | undefined> {
-    const type = contentType.startsWith('image/')
-      ? 'image'
-      : contentType === 'text/csv'
-      ? 'csv'
-      : undefined;
+    const type = resolveFileType(name, contentType);
     if (type !== undefined) {
       const buffer = await readData();
       const data = base64EncodeBuffer(buffer);
@@ -103,4 +99,19 @@ function base64EncodeBuffer(buf: ArrayBuffer): string {
       '',
     ),
   );
+}
+
+function resolveFileType(
+  name: string,
+  contentType: string,
+): FileType | undefined {
+  if (contentType.startsWith('text/csv')) {
+    return 'csv';
+  } else if (contentType.startsWith('image/')) {
+    return 'image';
+  } else if (contentType.startsWith('text/') && name.endsWith('csv')) {
+    return 'csv';
+  } else {
+    return undefined;
+  }
 }
