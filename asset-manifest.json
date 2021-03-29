@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/qh-charts/static/css/main.c189335b.chunk.css",
-    "main.js": "/qh-charts/static/js/main.474df23e.chunk.js",
-    "main.js.map": "/qh-charts/static/js/main.474df23e.chunk.js.map",
+    "main.js": "/qh-charts/static/js/main.69c28444.chunk.js",
+    "main.js.map": "/qh-charts/static/js/main.69c28444.chunk.js.map",
     "runtime-main.js": "/qh-charts/static/js/runtime-main.5793edff.js",
     "runtime-main.js.map": "/qh-charts/static/js/runtime-main.5793edff.js.map",
-    "static/js/2.8aace426.chunk.js": "/qh-charts/static/js/2.8aace426.chunk.js",
-    "static/js/2.8aace426.chunk.js.map": "/qh-charts/static/js/2.8aace426.chunk.js.map",
+    "static/js/2.556fee69.chunk.js": "/qh-charts/static/js/2.556fee69.chunk.js",
+    "static/js/2.556fee69.chunk.js.map": "/qh-charts/static/js/2.556fee69.chunk.js.map",
     "static/js/3.881a17d1.chunk.js": "/qh-charts/static/js/3.881a17d1.chunk.js",
     "static/js/3.881a17d1.chunk.js.map": "/qh-charts/static/js/3.881a17d1.chunk.js.map",
     "index.html": "/qh-charts/index.html",
     "static/css/main.c189335b.chunk.css.map": "/qh-charts/static/css/main.c189335b.chunk.css.map",
-    "static/js/2.8aace426.chunk.js.LICENSE.txt": "/qh-charts/static/js/2.8aace426.chunk.js.LICENSE.txt"
+    "static/js/2.556fee69.chunk.js.LICENSE.txt": "/qh-charts/static/js/2.556fee69.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.5793edff.js",
-    "static/js/2.8aace426.chunk.js",
+    "static/js/2.556fee69.chunk.js",
     "static/css/main.c189335b.chunk.css",
-    "static/js/main.474df23e.chunk.js"
+    "static/js/main.69c28444.chunk.js"
   ]
 }
