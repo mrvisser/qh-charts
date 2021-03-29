@@ -132,6 +132,7 @@ function createHighchartsOptionsForDay(
           if (dayMax !== undefined) {
             label = this.renderer.label(dayMax.toString(), -100).add();
             label.attr({
+              style: 'font-weight: bold',
               x: this.plotWidth + this.plotLeft,
               y:
                 this.yAxis[0].toPixels(dayMax, false) -
@@ -142,9 +143,15 @@ function createHighchartsOptionsForDay(
       },
       height: 225,
       margin: [10, 50, 50, 50],
+      style: {
+        fontFamily: 'Poppins',
+      },
       type: 'spline',
     },
     colors: ['rgba(255, 102, 102, 1)'],
+    credits: {
+      enabled: false,
+    },
     legend: {
       enabled: false,
     },
