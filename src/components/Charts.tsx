@@ -9,7 +9,9 @@ import styled from 'styled-components';
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStoreContext } from '../services/MetricsStore';
 
-const ChartsContainer = styled.div``;
+const ChartsContainer = styled.div`
+  margin: auto;
+`;
 
 const ChartContainer = styled.div`
   display: flex;
@@ -169,6 +171,7 @@ function createHighchartsOptionsForDay(
         fontFamily: 'Poppins',
       },
       type: 'spline',
+      //width: '100%',
     },
     colors: ['rgba(255, 102, 102, 1)'],
     credits: {

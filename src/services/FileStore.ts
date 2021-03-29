@@ -15,7 +15,7 @@ export type File = {
 
 export type ProcessedFiles = {
   files: File[];
-  unsupported: globalThis.File[];
+  unsupported: string[];
 };
 
 export const FileStoreContext = React.createContext<FileStore>(
@@ -32,41 +32,67 @@ export class FileStore {
 
   public async preProcessFiles(fileList: FileList): Promise<ProcessedFiles> {
     const files: File[] = [];
-    const unsupported: globalThis.File[] = [];
+    const unsupported: string[] = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const fileListItem = fileList.item(i);
       if (fileListItem !== null) {
-        const contentType = fileListItem.type;
-        const type = contentType.startsWith('image/')
-          ? 'image'
-          : contentType === 'text/csv'
-          ? 'csv'
-          : undefined;
-        if (type !== undefined) {
-          const buffer = await fileListItem.arrayBuffer();
-          const data = base64EncodeBuffer(buffer);
-          const name = fileListItem.name;
-          const size = buffer.byteLength;
-          files.push({
-            contentType,
-            data,
-            name,
-            size,
-            type,
-          });
+        const file = await this.preProcessFileData(
+          fileListItem.name,
+          fileListItem.type,
+          () => fileListItem.arrayBuffer(),
+        );
+
+        if (file !== undefined) {
+          files.push(file);
         } else {
-          unsupported.push(fileListItem);
+          unsupported.push(fileListItem.name);
         }
       }
     }
     return { files, unsupported };
   }
 
+  public async preProcessUrl(url: string): Promise<ProcessedFiles> {
+    const response = await fetch(url);
+    const contentType = response.headers.get('content-type');
+    const name = url.split('?')[0].split('/').slice(-1)[0];
+    const file = await this.preProcessFileData(
+      name,
+      contentType === null ? 'application/octet-stream' : contentType,
+      () => response.arrayBuffer(),
+    );
+    if (file !== undefined) {
+      return { files: [file], unsupported: [] };
+    } else {
+      return { files: [], unsupported: [url] };
+    }
+  }
+
   public async acceptFiles(files: File[]): Promise<void> {
     this.files$$.next(
       _.chain(this.files$$.value).concat(files).uniqBy('data').value(),
     );
+  }
+
+  private async preProcessFileData(
+    name: string,
+    contentType: string,
+    readData: () => Promise<ArrayBuffer>,
+  ): Promise<File | undefined> {
+    const type = contentType.startsWith('image/')
+      ? 'image'
+      : contentType === 'text/csv'
+      ? 'csv'
+      : undefined;
+    if (type !== undefined) {
+      const buffer = await readData();
+      const data = base64EncodeBuffer(buffer);
+      const size = buffer.byteLength;
+      return { contentType, data, name, size, type };
+    } else {
+      return undefined;
+    }
   }
 }
 

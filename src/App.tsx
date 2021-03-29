@@ -14,6 +14,7 @@ const GlobalStyle = createGlobalStyle`
 
   @page {
     margin: 0;
+    size: A4;
   }
 
   html,
@@ -28,16 +29,27 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Centered = styled.div`
+const Fullscreen = styled.div`
   align-items: center;
   display: flex;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   position: absolute;
-  width: 100%;
+  min-width: 100%;
 `;
 
-const App: React.FC = () => {
+const PrintWrapper = styled.div`
+  width: 100%;
+  @media print {
+    max-width: 8in;
+  }
+`;
+
+export type AppProps = {
+  dataUrl: string | undefined;
+};
+
+const App: React.FC<AppProps> = ({ dataUrl }) => {
   const [fileStore] = React.useState(() => new FileStore());
   const [metricsStore] = React.useState(() => new MetricsStore(fileStore));
   const [csvFiles] = useObservable(
@@ -46,6 +58,15 @@ const App: React.FC = () => {
     [],
   );
 
+  React.useEffect(() => {
+    if (dataUrl !== undefined) {
+      void (async () => {
+        const { files } = await fileStore.preProcessUrl(dataUrl);
+        await fileStore.acceptFiles(files);
+      })();
+    }
+  }, [dataUrl, fileStore]);
+
   return (
     <>
       <GlobalStyle />
@@ -53,13 +74,21 @@ const App: React.FC = () => {
         <MetricsStoreContext.Provider value={metricsStore}>
           <FileDropZone>
             {csvFiles.length > 0 ? (
-              <Charts />
-            ) : (
-              <Centered>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <PrintWrapper>
+                  <Charts />
+                </PrintWrapper>
+              </div>
+            ) : dataUrl === undefined ? (
+              <Fullscreen>
                 <span>
                   Drag and drop a CSV file to graph it. Add as many as you like.
                 </span>
-              </Centered>
+              </Fullscreen>
+            ) : (
+              <Fullscreen>
+                <span>Download data...</span>
+              </Fullscreen>
             )}
           </FileDropZone>
         </MetricsStoreContext.Provider>

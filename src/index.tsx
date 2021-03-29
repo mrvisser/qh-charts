@@ -7,9 +7,12 @@ import reportWebVitals from './reportWebVitals';
 
 import './setupHighcharts';
 
+const qs = new URLSearchParams(window.location.search);
+const dataUrl = qs.get('dataUrl');
+
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <App dataUrl={typeof dataUrl === 'string' ? dataUrl : undefined} />
   </React.StrictMode>,
   document.getElementById('root'),
 );
