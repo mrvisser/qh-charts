@@ -14,7 +14,7 @@ const GlobalStyle = createGlobalStyle`
 
   @page {
     margin: 0;
-    size: A4;
+    size: landscape;
   }
 
   html,
@@ -27,6 +27,7 @@ const GlobalStyle = createGlobalStyle`
   body {
     font-family: 'Poppins', 'Roboto', 'Helvetica Neue', sans-serif;
   }
+
 `;
 
 const Fullscreen = styled.div`
@@ -41,7 +42,7 @@ const Fullscreen = styled.div`
 const PrintWrapper = styled.div`
   width: 100%;
   @media print {
-    max-width: 8in;
+    max-width: 11in;
   }
 `;
 
@@ -82,12 +83,12 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
             ) : dataUrl === undefined ? (
               <Fullscreen>
                 <span>
-                  Drag and drop a CSV file to graph it. Add as many as you like.
+                  Drag and drop a Blood Glucose CSV file to view charts.
                 </span>
               </Fullscreen>
             ) : (
               <Fullscreen>
-                <span>Download data...</span>
+                <span>Downloading data...</span>
               </Fullscreen>
             )}
           </FileDropZone>

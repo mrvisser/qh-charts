@@ -6,17 +6,44 @@ import React from 'react';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
+import { useMatchMedia } from '../hooks/useMatchMedia';
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStoreContext } from '../services/MetricsStore';
 
+const nChartsPerPage = 3;
+
 const ChartsContainer = styled.div`
   margin: auto;
+`;
+
+const PageGroup = styled.div`
+  break-after: always;
+  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+
+  @media print {
+    height: 8.5in;
+    width: 11in;
+  }
 `;
 
 const ChartContainer = styled.div`
   display: flex;
   flex-direction: column;
   margin: 0 20px;
+
+  &.hidden {
+    display: none;
+  }
+
+  @media print {
+    &.hidden {
+      display: flex;
+      visibility: hidden;
+    }
+  }
 `;
 
 const ChartHeading = styled.h2`
@@ -60,10 +87,19 @@ export const Charts: React.FC = () => {
   );
   const [highchartsOptions, setHighchartsOptions] = React.useState<
     {
-      title: string;
+      hidden: boolean;
       options: Highcharts.Options;
-    }[]
+      title: string;
+    }[][]
   >();
+  const chartsRef = React.useRef<{ [title: string]: Highcharts.Chart }>({});
+  const isPrintMedia = useMatchMedia('print');
+
+  React.useEffect(() => {
+    Object.values(chartsRef.current).forEach((c) => {
+      c.reflow();
+    });
+  }, [chartsRef, isPrintMedia]);
 
   React.useEffect(() => {
     if (bloodGlucoseData !== undefined) {
@@ -74,17 +110,21 @@ export const Charts: React.FC = () => {
       const max = Math.ceil(Math.max(7, ...allValues));
       const yMinMax = { max, min };
       setHighchartsOptions(
-        bloodGlucoseData.map(({ data, day }) => {
-          const m = moment.tz(day, 'America/Toronto');
-          const xMinMax = {
-            max: m.endOf('day').toDate().getTime(),
-            min: m.startOf('day').toDate().getTime(),
-          };
-          return {
-            options: createHighchartsOptionsForDay(data, xMinMax, yMinMax),
-            title: m.format('dddd, MMMM Do'),
-          };
-        }),
+        _.chunk(
+          bloodGlucoseData.map(({ data, day }) => {
+            const m = moment.tz(day, 'America/Toronto');
+            const xMinMax = {
+              max: m.endOf('day').toDate().getTime(),
+              min: m.startOf('day').toDate().getTime(),
+            };
+            return {
+              hidden: false,
+              options: createHighchartsOptionsForDay(data, xMinMax, yMinMax),
+              title: m.format('dddd, MMMM Do'),
+            };
+          }),
+          nChartsPerPage,
+        ),
       );
     } else {
       setHighchartsOptions(undefined);
@@ -94,16 +134,37 @@ export const Charts: React.FC = () => {
   return (
     <ChartsContainer>
       {highchartsOptions !== undefined
-        ? highchartsOptions.map(({ title, options }) => {
-            return (
-              <ChartContainer key={title}>
-                <ChartHeading>{title}</ChartHeading>
-                <Chart>
-                  <HighchartsReact highcharts={Highcharts} options={options} />
-                </Chart>
-              </ChartContainer>
-            );
-          })
+        ? highchartsOptions.map((pageGroup) => (
+            <PageGroup key={`page-group-${pageGroup[0].title}`}>
+              {pageGroup
+                .concat(
+                  new Array(nChartsPerPage - pageGroup.length).fill({
+                    ...pageGroup[0],
+                    hidden: true,
+                  }),
+                )
+                .map(({ hidden = false, title, options }, i) => {
+                  return (
+                    <ChartContainer
+                      className={hidden ? 'hidden' : 'visible'}
+                      key={i}
+                    >
+                      <ChartHeading>{title}</ChartHeading>
+                      <Chart>
+                        <HighchartsReact
+                          callback={(chart: Highcharts.Chart) =>
+                            (chartsRef.current[title] = chart)
+                          }
+                          highcharts={Highcharts}
+                          key={`chart-${title}`}
+                          options={options}
+                        />
+                      </Chart>
+                    </ChartContainer>
+                  );
+                })}
+            </PageGroup>
+          ))
         : undefined}
     </ChartsContainer>
   );
@@ -165,13 +226,12 @@ function createHighchartsOptionsForDay(
           }
         },
       },
-      height: 225,
+      height: 200,
       margin: [10, 50, 50, 50],
       style: {
         fontFamily: 'Poppins',
       },
       type: 'spline',
-      //width: '100%',
     },
     colors: ['rgba(255, 102, 102, 1)'],
     credits: {
@@ -186,7 +246,7 @@ function createHighchartsOptionsForDay(
         gapUnit: 'value',
         marker: {
           enabled: true,
-          radius: 3,
+          radius: 2,
         },
       },
     },
