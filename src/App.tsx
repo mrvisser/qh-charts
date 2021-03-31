@@ -28,6 +28,23 @@ const GlobalStyle = createGlobalStyle`
     font-family: 'Poppins', 'Roboto', 'Helvetica Neue', sans-serif;
   }
 
+  #charts-for-print {
+    display: none;
+  }
+
+  @media print {
+    #charts-for-print {
+      display: block;
+    }
+
+    #charts-without-print {
+      display: none;
+    }
+
+    button.print {
+      display: none;
+    }
+  }
 `;
 
 const Fullscreen = styled.div`
@@ -37,13 +54,6 @@ const Fullscreen = styled.div`
   min-height: 100%;
   position: absolute;
   min-width: 100%;
-`;
-
-const PrintWrapper = styled.div`
-  width: 100%;
-  @media print {
-    max-width: 11in;
-  }
 `;
 
 export type AppProps = {
@@ -75,11 +85,7 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
         <MetricsStoreContext.Provider value={metricsStore}>
           <FileDropZone>
             {csvFiles.length > 0 ? (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <PrintWrapper>
-                  <Charts />
-                </PrintWrapper>
-              </div>
+              <Charts />
             ) : dataUrl === undefined ? (
               <Fullscreen>
                 <span>

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
@@ -6,14 +7,15 @@ import React from 'react';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
-import { useMatchMedia } from '../hooks/useMatchMedia';
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStoreContext } from '../services/MetricsStore';
 
 const nChartsPerPage = 3;
 
 const ChartsContainer = styled.div`
-  margin: auto;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
 `;
 
 const PageGroup = styled.div`
@@ -22,10 +24,11 @@ const PageGroup = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-around;
+  width: 11in;
 
   @media print {
-    height: 8.5in;
-    width: 11in;
+    height: 8.3in;
+    margin-bottom: 0.2in;
   }
 `;
 
@@ -57,7 +60,16 @@ const Chart = styled.div`
   flex: 1;
 `;
 
-export const Charts: React.FC = () => {
+export type ChartsProps = React.HTMLAttributes<HTMLDivElement> & {
+  animate?: boolean;
+  onAllChartsRendered?: () => void;
+};
+
+export const Charts: React.FC<ChartsProps> = ({
+  animate = true,
+  onAllChartsRendered,
+  ...divProps
+}) => {
   const metricsStore = React.useContext(MetricsStoreContext);
   const [bloodGlucoseData] = useObservable(
     () =>
@@ -93,13 +105,14 @@ export const Charts: React.FC = () => {
     }[][]
   >();
   const chartsRef = React.useRef<{ [title: string]: Highcharts.Chart }>({});
-  const isPrintMedia = useMatchMedia('print');
 
-  React.useEffect(() => {
-    Object.values(chartsRef.current).forEach((c) => {
-      c.reflow();
-    });
-  }, [chartsRef, isPrintMedia]);
+  const [
+    invokeOnAllChartsRendered,
+    setInvokeOnAllChartsRendered,
+  ] = React.useState(true);
+  const [renderedChartIndexes, setRenderedChartIndexes] = React.useState<
+    Record<number, true>
+  >({});
 
   React.useEffect(() => {
     if (bloodGlucoseData !== undefined) {
@@ -109,9 +122,10 @@ export const Charts: React.FC = () => {
       const min = Math.floor(Math.min(4, ...allValues));
       const max = Math.ceil(Math.max(7, ...allValues));
       const yMinMax = { max, min };
+      setRenderedChartIndexes({});
       setHighchartsOptions(
         _.chunk(
-          bloodGlucoseData.map(({ data, day }) => {
+          bloodGlucoseData.map(({ data, day }, i) => {
             const m = moment.tz(day, 'America/Toronto');
             const xMinMax = {
               max: m.endOf('day').toDate().getTime(),
@@ -119,7 +133,13 @@ export const Charts: React.FC = () => {
             };
             return {
               hidden: false,
-              options: createHighchartsOptionsForDay(data, xMinMax, yMinMax),
+              options: createHighchartsOptionsForDay(
+                data,
+                xMinMax,
+                yMinMax,
+                () => setRenderedChartIndexes((rci) => ({ ...rci, [i]: true })),
+                animate,
+              ),
               title: m.format('dddd, MMMM Do'),
             };
           }),
@@ -129,18 +149,49 @@ export const Charts: React.FC = () => {
     } else {
       setHighchartsOptions(undefined);
     }
-  }, [bloodGlucoseData]);
+  }, [animate, bloodGlucoseData]);
+
+  React.useEffect(() => {
+    if (
+      invokeOnAllChartsRendered &&
+      onAllChartsRendered !== undefined &&
+      bloodGlucoseData !== undefined
+    ) {
+      const areAllChartsRendered =
+        Object.keys(renderedChartIndexes).length === bloodGlucoseData.length;
+      if (areAllChartsRendered) {
+        setInvokeOnAllChartsRendered(false);
+        onAllChartsRendered();
+      }
+    }
+  }, [
+    bloodGlucoseData,
+    invokeOnAllChartsRendered,
+    onAllChartsRendered,
+    renderedChartIndexes,
+  ]);
 
   return (
-    <ChartsContainer>
+    <ChartsContainer {...divProps}>
       {highchartsOptions !== undefined
         ? highchartsOptions.map((pageGroup) => (
             <PageGroup key={`page-group-${pageGroup[0].title}`}>
               {pageGroup
                 .concat(
+                  // Concatenate a couple dummy charts to fill up the page. This ensures that 1 or
+                  // 2 charts on a page is always layed out the same way incrementally as a 3-chart
+                  // page. This is for print consistency when have 1 day, then 2, then 3 on a page.
                   new Array(nChartsPerPage - pageGroup.length).fill({
                     ...pageGroup[0],
                     hidden: true,
+                    options: {
+                      ...pageGroup[0].options,
+                      chart: {
+                        ...pageGroup[0].options.chart,
+                        // Don't invoke any load events for the page-filler items
+                        events: {},
+                      },
+                    },
                   }),
                 )
                 .map(({ hidden = false, title, options }, i) => {
@@ -152,9 +203,9 @@ export const Charts: React.FC = () => {
                       <ChartHeading>{title}</ChartHeading>
                       <Chart>
                         <HighchartsReact
-                          callback={(chart: Highcharts.Chart) =>
-                            (chartsRef.current[title] = chart)
-                          }
+                          callback={(chart: Highcharts.Chart) => {
+                            chartsRef.current[title] = chart;
+                          }}
                           highcharts={Highcharts}
                           key={`chart-${title}`}
                           options={options}
@@ -177,6 +228,8 @@ function createHighchartsOptionsForDay(
     min: number;
     max: number;
   },
+  onLoad: () => void,
+  animate: boolean,
 ): Highcharts.Options {
   const values = data.map((p) => p[1]);
   const dayMax = Math.max(...values);
@@ -189,10 +242,19 @@ function createHighchartsOptionsForDay(
   const dayMin = Math.min(...values);
   let maxLabel: Highcharts.SVGElement | undefined = undefined;
   let avgLabel: Highcharts.SVGElement | undefined = undefined;
+  let calledOnLoad = false;
 
   return {
     chart: {
+      animation: animate,
       events: {
+        load() {
+          console.log('loaded...');
+          if (!calledOnLoad) {
+            calledOnLoad = true;
+            onLoad();
+          }
+        },
         render() {
           if (maxLabel !== undefined) {
             maxLabel.destroy();
