@@ -5,7 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-import './setupHighcharts';
+import './setupVendorLibraries';
 
 const qs = new URLSearchParams(window.location.search);
 const dataUrl = qs.get('dataUrl');

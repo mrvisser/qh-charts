@@ -3,6 +3,7 @@ import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
 import moment, { Moment } from 'moment-timezone';
 import React from 'react';
+import { DateRangePicker, Range } from 'react-date-range';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
@@ -15,6 +16,13 @@ const ChartsContainer = styled.div`
   align-items: center;
   display: flex;
   flex-direction: column;
+`;
+
+const DateRangePickerContainer = styled.div`
+  padding: 25px;
+  @media print {
+    display: none;
+  }
 `;
 
 const PageGroup = styled.div`
@@ -133,6 +141,8 @@ export const Charts: React.FC<ChartsProps> = ({
         ),
     [metricsStore, timezone],
   );
+  const [minMaxDay, setMinMaxDay] = React.useState<[Moment, Moment]>();
+  const [dayFilter, setDayFilter] = React.useState<Range>();
   const [highchartsOptions, setHighchartsOptions] = React.useState<
     {
       hidden: boolean;
@@ -152,13 +162,38 @@ export const Charts: React.FC<ChartsProps> = ({
 
   React.useEffect(() => {
     if (bloodGlucoseData !== undefined) {
+      const nDays = bloodGlucoseData.length;
+      if (nDays > 0) {
+        setMinMaxDay([
+          moment(bloodGlucoseData[0].day, 'YYYY-MM-DD').tz(timezone),
+          moment(bloodGlucoseData[nDays - 1].day, 'YYYY-MM-DD').tz(timezone),
+        ]);
+      }
+
       const min = 3;
       const max = 8;
       const yMinMax = { max, min };
       setRenderedChartIndexes({});
+
+      const filter = ({ day }: DayData) => {
+        if (
+          dayFilter !== undefined &&
+          dayFilter.startDate !== undefined &&
+          dayFilter.endDate !== undefined
+        ) {
+          const dayMoment = moment(day, 'YYYY-M-DD').tz(timezone);
+          return (
+            dayMoment.isSameOrAfter(dayFilter.startDate) &&
+            dayMoment.isSameOrBefore(dayFilter.endDate)
+          );
+        } else {
+          return true;
+        }
+      };
+
       setHighchartsOptions(
         _.chunk(
-          bloodGlucoseData.map(({ data, day }, i) => {
+          bloodGlucoseData.filter(filter).map(({ data, day }, i) => {
             const m = moment.tz(day, timezone);
             const xMinMax = {
               max: m.endOf('day').toDate().getTime(),
@@ -182,7 +217,7 @@ export const Charts: React.FC<ChartsProps> = ({
     } else {
       setHighchartsOptions(undefined);
     }
-  }, [bloodGlucoseData, timezone]);
+  }, [bloodGlucoseData, dayFilter, timezone]);
 
   React.useEffect(() => {
     if (
@@ -206,6 +241,35 @@ export const Charts: React.FC<ChartsProps> = ({
 
   return (
     <ChartsContainer {...divProps}>
+      {minMaxDay !== undefined
+        ? (() => {
+            const [minDate, maxDate] = minMaxDay.map((m) => m.toDate());
+            return (
+              <DateRangePickerContainer>
+                <DateRangePicker
+                  maxDate={maxDate}
+                  minDate={minDate}
+                  moveRangeOnFirstSelection={false}
+                  onChange={(range) => {
+                    if ('selection' in range) {
+                      setDayFilter(range.selection);
+                    }
+                  }}
+                  ranges={[
+                    dayFilter === undefined
+                      ? {
+                          endDate: maxDate,
+                          key: 'selection',
+                          startDate: minDate,
+                        }
+                      : dayFilter,
+                  ]}
+                  showSelectionPreview={true}
+                />
+              </DateRangePickerContainer>
+            );
+          })()
+        : undefined}
       {highchartsOptions !== undefined
         ? highchartsOptions.map((pageGroup) => (
             <PageGroup key={`page-group-${pageGroup[0].title}`}>
@@ -301,34 +365,34 @@ function createHighchartsOptionsForDay(
           };
 
           if (dayAvg !== undefined && dayMax !== undefined) {
+            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
+            maxLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop,
+            });
+            const maxValue = this.renderer.text(dayMax.toString(), 0).add();
+            maxValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop,
+            });
+
             const avgLabel = this.renderer.text('AVERAGE GLUCOSE:', 0).add();
             avgLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop,
+              y: chartPaddingTop + lineHeight,
             });
             const avgValue = this.renderer.text(dayAvg.toString(), 0).add();
 
             avgValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop,
-            });
-
-            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
-            maxLabel.attr({
-              ...attrs,
-              x: labelX,
-              y: chartPaddingTop + lineHeight,
-            });
-            const maxValue = this.renderer.text(dayMax.toString(), 0).add();
-            maxValue.attr({
-              ...attrs,
-              x: valueX,
               y: chartPaddingTop + lineHeight,
             });
 
-            labels.push(avgLabel, avgValue, maxLabel, maxValue);
+            labels.push(maxLabel, maxValue, avgLabel, avgValue);
           }
         },
       },
