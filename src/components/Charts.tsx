@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
-import moment from 'moment-timezone';
+import moment, { Moment } from 'moment-timezone';
 import React from 'react';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
@@ -61,11 +59,18 @@ const Chart = styled.div`
   flex: 1;
 `;
 
+type DayData = {
+  day: string;
+  data: (readonly [number, number])[];
+};
+
 export type ChartsProps = React.HTMLAttributes<HTMLDivElement> & {
+  timezone: string;
   onAllChartsRendered?: () => void;
 };
 
 export const Charts: React.FC<ChartsProps> = ({
+  timezone,
   onAllChartsRendered,
   ...divProps
 }) => {
@@ -76,25 +81,57 @@ export const Charts: React.FC<ChartsProps> = ({
         .pipe(
           map((ms) =>
             ms !== undefined
-              ? ms.map(({ time, value }) => [time.getTime(), value] as const)
+              ? ms.map(({ time, value }) => [time, value] as const)
               : undefined,
           ),
         )
         .pipe(
           map((ms) => {
             if (ms !== undefined) {
-              return _.chain(ms)
-                .groupBy(([time]) => moment(time).format('YYYY-MM-DD'))
+              const dayData = _.chain(ms)
+                .groupBy(([time]) =>
+                  moment(time).tz(timezone).format('YYYY-MM-DD'),
+                )
                 .toPairs()
                 .map(([day, data]) => ({ data, day }))
                 .sortBy('day')
                 .value();
+              return dayData.reduce<{
+                acc: DayData[];
+                prevDay: Moment | undefined;
+              }>(
+                ({ acc, prevDay }, curr) => {
+                  const currDay = moment(curr.day, 'YYYY-MM-DD');
+                  if (prevDay !== undefined) {
+                    // If there is 1 or more days in between this day and the next day, then fill
+                    // in the empty days with no data. This ensures that we just render empty
+                    // graphs in between
+                    const nDaysMissing = currDay.diff(prevDay, 'days') - 1;
+                    const filler = Array.from(Array(nDaysMissing).keys()).map(
+                      (i): DayData => ({
+                        data: [],
+                        day: prevDay
+                          .clone()
+                          .add(i + 1, 'days')
+                          .format('YYYY-MM-DD'),
+                      }),
+                    );
+                    return {
+                      acc: acc.concat(filler, [curr]),
+                      prevDay: currDay,
+                    };
+                  } else {
+                    return { acc: [curr], prevDay: currDay };
+                  }
+                },
+                { acc: [], prevDay: undefined },
+              ).acc;
             } else {
               return undefined;
             }
           }),
         ),
-    [metricsStore],
+    [metricsStore, timezone],
   );
   const [highchartsOptions, setHighchartsOptions] = React.useState<
     {
@@ -122,7 +159,7 @@ export const Charts: React.FC<ChartsProps> = ({
       setHighchartsOptions(
         _.chunk(
           bloodGlucoseData.map(({ data, day }, i) => {
-            const m = moment.tz(day, 'America/Toronto');
+            const m = moment.tz(day, timezone);
             const xMinMax = {
               max: m.endOf('day').toDate().getTime(),
               min: m.startOf('day').toDate().getTime(),
@@ -130,6 +167,7 @@ export const Charts: React.FC<ChartsProps> = ({
             return {
               hidden: false,
               options: createHighchartsOptionsForDay(
+                timezone,
                 data,
                 xMinMax,
                 yMinMax,
@@ -144,7 +182,7 @@ export const Charts: React.FC<ChartsProps> = ({
     } else {
       setHighchartsOptions(undefined);
     }
-  }, [bloodGlucoseData]);
+  }, [bloodGlucoseData, timezone]);
 
   React.useEffect(() => {
     if (
@@ -173,7 +211,7 @@ export const Charts: React.FC<ChartsProps> = ({
             <PageGroup key={`page-group-${pageGroup[0].title}`}>
               {pageGroup
                 .concat(
-                  // Concatenate a couple dummy charts to fill up the page. This ensures that 1 or
+                  // Concatenate dummy charts to fill up each page of 3. This ensures that 1 or
                   // 2 charts on a page is always layed out the same way incrementally as a 3-chart
                   // page. This is for print consistency when have 1 day, then 2, then 3 on a page.
                   new Array(nChartsPerPage - pageGroup.length).fill({
@@ -217,6 +255,7 @@ export const Charts: React.FC<ChartsProps> = ({
 };
 
 function createHighchartsOptionsForDay(
+  timezone: string,
   data: (readonly [number, number])[],
   xMinMax: { min: number; max: number },
   yMinMax: {
@@ -324,6 +363,10 @@ function createHighchartsOptionsForDay(
         type: 'spline',
       },
     ],
+    time: {
+      moment,
+      timezone,
+    },
     title: {
       text: '',
     },

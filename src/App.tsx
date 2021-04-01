@@ -85,7 +85,7 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
         <MetricsStoreContext.Provider value={metricsStore}>
           <FileDropZone>
             {csvFiles.length > 0 ? (
-              <Charts />
+              <Charts timezone="America/Toronto" />
             ) : dataUrl === undefined ? (
               <Fullscreen>
                 <span>

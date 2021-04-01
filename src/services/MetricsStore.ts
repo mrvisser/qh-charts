@@ -1,13 +1,13 @@
 import csvParse from 'csv-parse';
 import moment from 'moment-timezone';
 import React from 'react';
-import { Observable, of } from 'rxjs';
+import { BehaviorSubject, combineLatest, Observable, of } from 'rxjs';
 import { concatMap } from 'rxjs/operators';
 
 import { FileStore } from './FileStore';
 
 export type MetricValue<T> = {
-  time: Date;
+  time: number;
   value: T;
 };
 
@@ -23,15 +23,19 @@ export const MetricsStoreContext = React.createContext<MetricsStore>(
 );
 
 export class MetricsStore {
+  private customerDataTimeZone$$ = new BehaviorSubject('America/Toronto');
+
   constructor(private readonly fileStore: FileStore) {}
 
   /** Observe changes to the blood glucose metrics. */
   public readonly bloodGlucose$: Observable<
     MetricValue<number>[] | undefined
-  > = this.fileStore
-    .filesByType$('csv')
+  > = combineLatest([
+    this.fileStore.filesByType$('csv'),
+    this.customerDataTimeZone$$,
+  ])
     .pipe(
-      concatMap((files) =>
+      concatMap(([files, customerDataTimeZone]) =>
         of<() => Promise<MetricValue<number>[] | undefined>>(
           () => Promise.resolve(undefined),
           async () => {
@@ -53,10 +57,10 @@ export class MetricsStore {
             return Object.keys(timeValues)
               .map((timeStr) => {
                 const value = timeValues[timeStr];
-                const time = parseTime(timeStr);
+                const time = parseTime(timeStr, customerDataTimeZone);
                 return { time, value };
               })
-              .sort((a, b) => a.time.getTime() - b.time.getTime());
+              .sort((a, b) => a.time - b.time);
           },
         ),
       ),
@@ -88,8 +92,8 @@ function parseBloodGlucoseCsv(input: string): Promise<Record<string, number>> {
   });
 }
 
-function parseTime(str: string): Date {
-  return moment.tz(str, 'DD-MM-YYYY HH:mm', 'America/Toronto').toDate();
+function parseTime(str: string, tz: string): number {
+  return moment.tz(str, 'DD-MM-YYYY HH:mm', tz).valueOf();
 }
 
 function parseValue(record: CsvRecord): number | undefined {
