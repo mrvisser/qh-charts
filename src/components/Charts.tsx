@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
@@ -61,12 +62,10 @@ const Chart = styled.div`
 `;
 
 export type ChartsProps = React.HTMLAttributes<HTMLDivElement> & {
-  animate?: boolean;
   onAllChartsRendered?: () => void;
 };
 
 export const Charts: React.FC<ChartsProps> = ({
-  animate = true,
   onAllChartsRendered,
   ...divProps
 }) => {
@@ -116,11 +115,8 @@ export const Charts: React.FC<ChartsProps> = ({
 
   React.useEffect(() => {
     if (bloodGlucoseData !== undefined) {
-      const allValues = bloodGlucoseData.flatMap((bg) =>
-        bg.data.map((p) => p[1]),
-      );
-      const min = Math.floor(Math.min(4, ...allValues));
-      const max = Math.ceil(Math.max(7, ...allValues));
+      const min = 3;
+      const max = 8;
       const yMinMax = { max, min };
       setRenderedChartIndexes({});
       setHighchartsOptions(
@@ -138,7 +134,6 @@ export const Charts: React.FC<ChartsProps> = ({
                 xMinMax,
                 yMinMax,
                 () => setRenderedChartIndexes((rci) => ({ ...rci, [i]: true })),
-                animate,
               ),
               title: m.format('dddd, MMMM Do'),
             };
@@ -149,7 +144,7 @@ export const Charts: React.FC<ChartsProps> = ({
     } else {
       setHighchartsOptions(undefined);
     }
-  }, [animate, bloodGlucoseData]);
+  }, [bloodGlucoseData]);
 
   React.useEffect(() => {
     if (
@@ -229,7 +224,6 @@ function createHighchartsOptionsForDay(
     max: number;
   },
   onLoad: () => void,
-  animate: boolean,
 ): Highcharts.Options {
   const values = data.map((p) => p[1]);
   const dayMax = Math.max(...values);
@@ -240,56 +234,67 @@ function createHighchartsOptionsForDay(
         ) / 10
       : undefined;
   const dayMin = Math.min(...values);
-  let maxLabel: Highcharts.SVGElement | undefined = undefined;
-  let avgLabel: Highcharts.SVGElement | undefined = undefined;
+  const labels: Highcharts.SVGElement[] = [];
   let calledOnLoad = false;
 
   return {
     chart: {
-      animation: animate,
       events: {
         load() {
-          console.log('loaded...');
           if (!calledOnLoad) {
             calledOnLoad = true;
             onLoad();
           }
         },
         render() {
-          if (maxLabel !== undefined) {
-            maxLabel.destroy();
-            maxLabel = undefined;
-          }
+          labels.forEach((l) => l.destroy());
+          labels.length = 0;
 
-          if (avgLabel !== undefined) {
-            avgLabel.destroy();
-            avgLabel = undefined;
-          }
+          const chartPaddingTop = 28.5;
+          const lineHeight = 18.5;
+          const labelX = 45;
+          const valueX = labelX + 140;
 
-          if (dayMax !== undefined) {
-            maxLabel = this.renderer.label(dayMax.toString(), -100).add();
-            maxLabel.attr({
-              style: 'font-weight: bold',
-              x: this.plotWidth + this.plotLeft,
-              y:
-                this.yAxis[0].toPixels(dayMax, false) -
-                maxLabel.getBBox().height / 2,
-            });
-          }
+          const attrs = {
+            fill: '#999',
+            'font-weight': '600',
+            zIndex: 1,
+          };
 
-          if (dayAvg !== undefined) {
-            avgLabel = this.renderer.label(dayAvg.toString(), -100).add();
+          if (dayAvg !== undefined && dayMax !== undefined) {
+            const avgLabel = this.renderer.text('AVERAGE GLUCOSE:', 0).add();
             avgLabel.attr({
-              x: this.plotWidth + this.plotLeft,
-              y:
-                this.yAxis[0].toPixels(dayAvg, false) -
-                avgLabel.getBBox().height / 2,
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop,
             });
+            const avgValue = this.renderer.text(dayAvg.toString(), 0).add();
+
+            avgValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop,
+            });
+
+            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
+            maxLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight,
+            });
+            const maxValue = this.renderer.text(dayMax.toString(), 0).add();
+            maxValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop + lineHeight,
+            });
+
+            labels.push(avgLabel, avgValue, maxLabel, maxValue);
           }
         },
       },
-      height: 200,
-      margin: [10, 50, 50, 50],
+      height: 225,
+      margin: [15, 0, 30, 40],
       style: {
         fontFamily: 'Poppins',
       },
@@ -348,15 +353,13 @@ function createHighchartsOptionsForDay(
               zIndex: 2,
             }
           : undefined,
-        dayAvg !== undefined
-          ? {
-              color: '#aaa',
-              dashStyle: 'Dash',
-              value: dayAvg,
-              width: 4,
-              zIndex: 2,
-            }
-          : undefined,
+        {
+          color: '#aaa',
+          dashStyle: 'Dash',
+          value: 5,
+          width: 4,
+          zIndex: 2,
+        },
         dayMin !== undefined
           ? {
               color: '#aaa',
