@@ -310,6 +310,7 @@ function createHighchartsOptionsOverall(
   let rangeChangeTimeout: NodeJS.Timeout | undefined = undefined;
   return {
     chart: {
+      animation: false,
       height: 225,
       margin: [15, 0, 30, 40],
       style: {
