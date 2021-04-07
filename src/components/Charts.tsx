@@ -312,7 +312,7 @@ function createHighchartsOptionsOverall(
     chart: {
       animation: false,
       height: 225,
-      margin: [15, 0, 30, 40],
+      margin: [15, 0, 60, 40],
       style: {
         fontFamily: 'Poppins',
       },
@@ -366,6 +366,9 @@ function createHighchartsOptionsOverall(
             );
           }
         },
+      },
+      labels: {
+        rotation: -45,
       },
       ordinal: false,
       type: 'datetime',
