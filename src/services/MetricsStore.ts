@@ -53,7 +53,9 @@ export class MetricsStore {
               for (let i = 0; i < data.length; i++) {
                 bytes[i] = data.charCodeAt(i);
               }
-              return new TextDecoder('utf-8').decode(bytes);
+              return new TextDecoder('utf-8')
+                .decode(bytes)
+                .replaceAll('\r\n', '\n');
             });
             const timeValuesArr: Record<string, number>[] = await Promise.all(
               csvs.map(parseBloodGlucoseCsv),
