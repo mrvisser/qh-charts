@@ -1,5 +1,6 @@
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
+import * as HighchartsStock from 'highcharts/highstock';
 import _ from 'lodash';
 import moment from 'moment-timezone';
 import React from 'react';
@@ -11,6 +12,12 @@ import { useObservable } from '../hooks/useObservable';
 import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
 
 const nChartsPerPage = 3;
+
+const ExcludePrint = styled.div`
+  @media print {
+    display: none;
+  }
+`;
 
 const ChartsContainer = styled.div`
   align-items: center;
@@ -95,13 +102,33 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
       ),
     [metricsStore],
   );
-  const overallHighchartsOptions = React.useMemo(
+  const [overallMinMaxTime, setOverallMinMaxTime] = React.useState<
+    [number, number]
+  >();
+  const overallHighchartsOptions = React.useMemo(() => {
+    return overallBloodGlucose !== undefined
+      ? createHighchartsOptionsOverall(
+          timezone,
+          overallBloodGlucose,
+          overallMinMaxTime !== undefined
+            ? { max: overallMinMaxTime[1], min: overallMinMaxTime[0] }
+            : undefined,
+        )
+      : undefined;
+  }, [overallBloodGlucose, overallMinMaxTime, timezone]);
+  const overallHighchartsFilterOptions = React.useMemo(
     () =>
       overallBloodGlucose !== undefined
-        ? createHighchartsOptionsOverall(timezone, overallBloodGlucose)
+        ? createHighchartsOptionsOverall(
+            timezone,
+            overallBloodGlucose,
+            undefined,
+            (start, end) => setOverallMinMaxTime([start, end]),
+          )
         : undefined,
     [overallBloodGlucose, timezone],
   );
+
   const dailyBloodGlucose = React.useMemo(() => {
     if (overallBloodGlucose !== undefined) {
       return _.chain(overallBloodGlucose)
@@ -114,7 +141,7 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
       return undefined;
     }
   }, [overallBloodGlucose, timezone]);
-  const minMaxDay = React.useMemo(() => {
+  const dailyMinMaxDay = React.useMemo(() => {
     if (dailyBloodGlucose !== undefined) {
       const nDays = dailyBloodGlucose.length;
       if (nDays > 0) {
@@ -178,22 +205,31 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
   return (
     <ChartsContainer {...divProps}>
       <ChartsHeading>Overall</ChartsHeading>
-      {overallHighchartsOptions !== undefined ? (
+      {overallHighchartsOptions !== undefined &&
+      overallHighchartsFilterOptions !== undefined ? (
         <PageGroup key={`page-group-overall`}>
+          <ExcludePrint>
+            <HighchartsReact
+              id="overall-range-filter"
+              constructorType="stockChart"
+              highcharts={HighchartsStock}
+              options={overallHighchartsFilterOptions}
+            />
+          </ExcludePrint>
           <ChartContainer>
             <Chart>
               <HighchartsReact
                 highcharts={Highcharts}
-                options={overallHighchartsOptions}
+                options={{ ...overallHighchartsOptions }}
               />
             </Chart>
           </ChartContainer>
         </PageGroup>
       ) : undefined}
       <ChartsHeading>Daily</ChartsHeading>
-      {minMaxDay !== undefined
+      {dailyMinMaxDay !== undefined
         ? (() => {
-            const [minDate, maxDate] = minMaxDay.map((m) => m.toDate());
+            const [minDate, maxDate] = dailyMinMaxDay.map((m) => m.toDate());
             return (
               <DateRangePickerContainer>
                 <DateRangePicker
@@ -268,7 +304,10 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
 function createHighchartsOptionsOverall(
   timezone: string,
   data: [number, number][],
+  xMinMax?: { min: number; max: number },
+  onRangeChange?: (start: number, end: number) => void,
 ): Highcharts.Options {
+  let rangeChangeTimeout: NodeJS.Timeout | undefined = undefined;
   return {
     chart: {
       height: 225,
@@ -309,10 +348,25 @@ function createHighchartsOptionsOverall(
       text: '',
     },
     xAxis: {
+      ...xMinMax,
       dateTimeLabelFormats: {
         day: "%e. %b '%y",
         week: "%e. %b '%y",
       },
+      events: {
+        setExtremes: (ev) => {
+          if (onRangeChange !== undefined) {
+            if (rangeChangeTimeout !== undefined) {
+              clearTimeout(rangeChangeTimeout);
+            }
+            rangeChangeTimeout = setTimeout(
+              () => onRangeChange(ev.min, ev.max),
+              500,
+            );
+          }
+        },
+      },
+      ordinal: false,
       type: 'datetime',
     },
     yAxis: {
