@@ -1,14 +1,14 @@
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
-import moment, { Moment } from 'moment-timezone';
+import moment from 'moment-timezone';
 import React from 'react';
 import { DateRangePicker, Range } from 'react-date-range';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
-import { MetricsStoreContext } from '../services/MetricsStore';
+import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
 
 const nChartsPerPage = 3;
 
@@ -16,6 +16,14 @@ const ChartsContainer = styled.div`
   align-items: center;
   display: flex;
   flex-direction: column;
+`;
+
+const ChartsHeading = styled.h1`
+  font-size: 2em;
+  padding: 25px;
+  @media print {
+    display: none;
+  }
 `;
 
 const DateRangePickerContainer = styled.div`
@@ -69,111 +77,61 @@ const Chart = styled.div`
 
 type DayData = {
   day: string;
-  data: (readonly [number, number])[];
+  data: [number, number][];
 };
 
 export type ChartsProps = React.HTMLAttributes<HTMLDivElement> & {
   timezone: string;
-  onAllChartsRendered?: () => void;
 };
 
-export const Charts: React.FC<ChartsProps> = ({
-  timezone,
-  onAllChartsRendered,
-  ...divProps
-}) => {
+export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
   const metricsStore = React.useContext(MetricsStoreContext);
-  const [bloodGlucoseData] = useObservable(
-    () =>
-      metricsStore.bloodGlucose$
-        .pipe(
-          map((ms) =>
-            ms !== undefined
-              ? ms.map(({ time, value }) => [time, value] as const)
-              : undefined,
-          ),
-        )
-        .pipe(
-          map((ms) => {
-            if (ms !== undefined) {
-              const dayData = _.chain(ms)
-                .groupBy(([time]) =>
-                  moment(time).tz(timezone).format('YYYY-MM-DD'),
-                )
-                .toPairs()
-                .map(([day, data]) => ({ data, day }))
-                .sortBy('day')
-                .value();
-              return dayData.reduce<{
-                acc: DayData[];
-                prevDay: Moment | undefined;
-              }>(
-                ({ acc, prevDay }, curr) => {
-                  const currDay = moment(curr.day, 'YYYY-MM-DD');
-                  if (prevDay !== undefined) {
-                    // If there is 1 or more days in between this day and the next day, then fill
-                    // in the empty days with no data. This ensures that we just render empty
-                    // graphs in between
-                    const nDaysMissing = currDay.diff(prevDay, 'days') - 1;
-                    const filler = Array.from(Array(nDaysMissing).keys()).map(
-                      (i): DayData => ({
-                        data: [],
-                        day: prevDay
-                          .clone()
-                          .add(i + 1, 'days')
-                          .format('YYYY-MM-DD'),
-                      }),
-                    );
-                    return {
-                      acc: acc.concat(filler, [curr]),
-                      prevDay: currDay,
-                    };
-                  } else {
-                    return { acc: [curr], prevDay: currDay };
-                  }
-                },
-                { acc: [], prevDay: undefined },
-              ).acc;
-            } else {
-              return undefined;
-            }
-          }),
-        ),
-    [metricsStore, timezone],
-  );
-  const [minMaxDay, setMinMaxDay] = React.useState<[Moment, Moment]>();
   const [dayFilter, setDayFilter] = React.useState<Range>();
-  const [highchartsOptions, setHighchartsOptions] = React.useState<
-    {
-      hidden: boolean;
-      options: Highcharts.Options;
-      title: string;
-    }[][]
-  >();
-  const chartsRef = React.useRef<{ [title: string]: Highcharts.Chart }>({});
 
-  const [
-    invokeOnAllChartsRendered,
-    setInvokeOnAllChartsRendered,
-  ] = React.useState(true);
-  const [renderedChartIndexes, setRenderedChartIndexes] = React.useState<
-    Record<number, true>
-  >({});
-
-  React.useEffect(() => {
-    if (bloodGlucoseData !== undefined) {
-      const nDays = bloodGlucoseData.length;
+  const [overallBloodGlucose] = useObservable(
+    () =>
+      metricsStore.bloodGlucose$.pipe(
+        map(MetricsStore.metricValuesToHighchartsPairs),
+      ),
+    [metricsStore],
+  );
+  const overallHighchartsOptions = React.useMemo(
+    () =>
+      overallBloodGlucose !== undefined
+        ? createHighchartsOptionsOverall(timezone, overallBloodGlucose)
+        : undefined,
+    [overallBloodGlucose, timezone],
+  );
+  const dailyBloodGlucose = React.useMemo(() => {
+    if (overallBloodGlucose !== undefined) {
+      return _.chain(overallBloodGlucose)
+        .groupBy(([time]) => moment(time).tz(timezone).format('YYYY-MM-DD'))
+        .toPairs()
+        .map(([day, data]) => ({ data, day }))
+        .sortBy('day')
+        .value();
+    } else {
+      return undefined;
+    }
+  }, [overallBloodGlucose, timezone]);
+  const minMaxDay = React.useMemo(() => {
+    if (dailyBloodGlucose !== undefined) {
+      const nDays = dailyBloodGlucose.length;
       if (nDays > 0) {
-        setMinMaxDay([
-          moment(bloodGlucoseData[0].day, 'YYYY-MM-DD').tz(timezone),
-          moment(bloodGlucoseData[nDays - 1].day, 'YYYY-MM-DD').tz(timezone),
-        ]);
+        return [
+          moment(dailyBloodGlucose[0].day, 'YYYY-MM-DD').tz(timezone),
+          moment(dailyBloodGlucose[nDays - 1].day, 'YYYY-MM-DD').tz(timezone),
+        ];
+      } else {
+        return undefined;
       }
-
+    }
+  }, [dailyBloodGlucose, timezone]);
+  const dailyHighchartsOptions = React.useMemo(() => {
+    if (dailyBloodGlucose !== undefined) {
       const min = 3;
       const max = 8;
       const yMinMax = { max, min };
-      setRenderedChartIndexes({});
 
       const filter = ({ day }: DayData) => {
         if (
@@ -191,56 +149,47 @@ export const Charts: React.FC<ChartsProps> = ({
         }
       };
 
-      setHighchartsOptions(
-        _.chunk(
-          bloodGlucoseData.filter(filter).map(({ data, day }, i) => {
-            const m = moment.tz(day, timezone);
-            const xMinMax = {
-              max: m.endOf('day').toDate().getTime(),
-              min: m.startOf('day').toDate().getTime(),
-            };
-            return {
-              hidden: false,
-              options: createHighchartsOptionsForDay(
-                timezone,
-                data,
-                xMinMax,
-                yMinMax,
-                () => setRenderedChartIndexes((rci) => ({ ...rci, [i]: true })),
-              ),
-              title: m.format('dddd, MMMM Do'),
-            };
-          }),
-          nChartsPerPage,
-        ),
+      return _.chunk(
+        dailyBloodGlucose.filter(filter).map(({ data, day }) => {
+          const m = moment.tz(day, timezone);
+          const xMinMax = {
+            max: m.endOf('day').toDate().getTime(),
+            min: m.startOf('day').toDate().getTime(),
+          };
+          return {
+            hidden: false,
+            options: createHighchartsOptionsForDay(
+              timezone,
+              data,
+              xMinMax,
+              yMinMax,
+            ),
+            title: m.format('dddd, MMMM Do YYYY'),
+          };
+        }),
+        nChartsPerPage,
       );
     } else {
-      setHighchartsOptions(undefined);
+      return undefined;
     }
-  }, [bloodGlucoseData, dayFilter, timezone]);
-
-  React.useEffect(() => {
-    if (
-      invokeOnAllChartsRendered &&
-      onAllChartsRendered !== undefined &&
-      bloodGlucoseData !== undefined
-    ) {
-      const areAllChartsRendered =
-        Object.keys(renderedChartIndexes).length === bloodGlucoseData.length;
-      if (areAllChartsRendered) {
-        setInvokeOnAllChartsRendered(false);
-        onAllChartsRendered();
-      }
-    }
-  }, [
-    bloodGlucoseData,
-    invokeOnAllChartsRendered,
-    onAllChartsRendered,
-    renderedChartIndexes,
-  ]);
+  }, [dailyBloodGlucose, dayFilter, timezone]);
 
   return (
     <ChartsContainer {...divProps}>
+      <ChartsHeading>Overall</ChartsHeading>
+      {overallHighchartsOptions !== undefined ? (
+        <PageGroup key={`page-group-overall`}>
+          <ChartContainer>
+            <Chart>
+              <HighchartsReact
+                highcharts={Highcharts}
+                options={overallHighchartsOptions}
+              />
+            </Chart>
+          </ChartContainer>
+        </PageGroup>
+      ) : undefined}
+      <ChartsHeading>Daily</ChartsHeading>
       {minMaxDay !== undefined
         ? (() => {
             const [minDate, maxDate] = minMaxDay.map((m) => m.toDate());
@@ -270,8 +219,8 @@ export const Charts: React.FC<ChartsProps> = ({
             );
           })()
         : undefined}
-      {highchartsOptions !== undefined
-        ? highchartsOptions.map((pageGroup) => (
+      {dailyHighchartsOptions !== undefined
+        ? dailyHighchartsOptions.map((pageGroup) => (
             <PageGroup key={`page-group-${pageGroup[0].title}`}>
               {pageGroup
                 .concat(
@@ -300,9 +249,6 @@ export const Charts: React.FC<ChartsProps> = ({
                       <ChartHeading>{title}</ChartHeading>
                       <Chart>
                         <HighchartsReact
-                          callback={(chart: Highcharts.Chart) => {
-                            chartsRef.current[title] = chart;
-                          }}
                           highcharts={Highcharts}
                           key={`chart-${title}`}
                           options={options}
@@ -318,15 +264,69 @@ export const Charts: React.FC<ChartsProps> = ({
   );
 };
 
+function createHighchartsOptionsOverall(
+  timezone: string,
+  data: [number, number][],
+): Highcharts.Options {
+  return {
+    chart: {
+      height: 225,
+      margin: [15, 0, 30, 40],
+      style: {
+        fontFamily: 'Poppins',
+      },
+      type: 'spline',
+    },
+    colors: ['rgba(255, 102, 102, 1)'],
+    credits: {
+      enabled: false,
+    },
+    legend: {
+      enabled: false,
+    },
+    plotOptions: {
+      series: {
+        gapSize: 30 * 60 * 1000,
+        gapUnit: 'value',
+        marker: {
+          enabled: false,
+        },
+      },
+    },
+    series: [
+      {
+        data,
+        name: 'mmol/L',
+        type: 'spline',
+      },
+    ],
+    time: {
+      moment,
+      timezone,
+    },
+    title: {
+      text: '',
+    },
+    xAxis: {
+      type: 'datetime',
+    },
+    yAxis: {
+      tickInterval: 0.5,
+      title: {
+        text: '',
+      },
+    },
+  };
+}
+
 function createHighchartsOptionsForDay(
   timezone: string,
-  data: (readonly [number, number])[],
+  data: [number, number][],
   xMinMax: { min: number; max: number },
   yMinMax: {
     min: number;
     max: number;
   },
-  onLoad: () => void,
 ): Highcharts.Options {
   const values = data.map((p) => p[1]);
   const dayMax = Math.max(...values);
@@ -338,17 +338,10 @@ function createHighchartsOptionsForDay(
       : undefined;
   const dayMin = Math.min(...values);
   const labels: Highcharts.SVGElement[] = [];
-  let calledOnLoad = false;
 
   return {
     chart: {
       events: {
-        load() {
-          if (!calledOnLoad) {
-            calledOnLoad = true;
-            onLoad();
-          }
-        },
         render() {
           labels.forEach((l) => l.destroy());
           labels.length = 0;

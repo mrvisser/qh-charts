@@ -23,6 +23,14 @@ export const MetricsStoreContext = React.createContext<MetricsStore>(
 );
 
 export class MetricsStore {
+  public static metricValuesToHighchartsPairs = <T>(
+    ms: MetricValue<T>[] | undefined,
+  ): [number, T][] | undefined => {
+    return ms !== undefined
+      ? ms.map(({ time, value }) => [time, value])
+      : undefined;
+  };
+
   private customerDataTimeZone$$ = new BehaviorSubject('America/Toronto');
 
   constructor(private readonly fileStore: FileStore) {}
