@@ -309,6 +309,10 @@ function createHighchartsOptionsOverall(
       text: '',
     },
     xAxis: {
+      dateTimeLabelFormats: {
+        day: "%e. %b '%y",
+        week: "%e. %b '%y",
+      },
       type: 'datetime',
     },
     yAxis: {
