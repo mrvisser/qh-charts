@@ -129,10 +129,6 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
   }, [dailyBloodGlucose, timezone]);
   const dailyHighchartsOptions = React.useMemo(() => {
     if (dailyBloodGlucose !== undefined) {
-      const min = 3;
-      const max = 8;
-      const yMinMax = { max, min };
-
       const filter = ({ day }: DayData) => {
         if (
           dayFilter !== undefined &&
@@ -155,6 +151,11 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
           const xMinMax = {
             max: m.endOf('day').toDate().getTime(),
             min: m.startOf('day').toDate().getTime(),
+          };
+          const yMax = Math.min(Math.max(8, ...data.map((d) => d[1])), 12);
+          const yMinMax = {
+            max: Math.ceil(yMax * 2) / 2,
+            min: 3,
           };
           return {
             hidden: false,
