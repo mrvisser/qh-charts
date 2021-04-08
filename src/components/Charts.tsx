@@ -374,6 +374,13 @@ function createHighchartsOptionsOverall(
       type: 'datetime',
     },
     yAxis: {
+      plotBands: [
+        {
+          color: 'rgba(87, 220, 140, 0.2)',
+          from: 4.1,
+          to: 6,
+        },
+      ],
       tickInterval: 0.5,
       title: {
         text: '',
