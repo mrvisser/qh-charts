@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import * as HighchartsStock from 'highcharts/highstock';
@@ -12,6 +13,8 @@ import { useObservable } from '../hooks/useObservable';
 import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
 
 const nChartsPerPage = 3;
+
+const aboveThresholdTarget = 7.2;
 
 const ExcludePrint = styled.div`
   @media print {
@@ -407,6 +410,38 @@ function createHighchartsOptionsForDay(
         ) / 10
       : undefined;
   const dayMin = Math.min(...values);
+  const timeAboveTarget = data.reduce((acc, [currTime, currValue], i) => {
+    if (i > 0) {
+      const [prevTime, prevValue] = data[i - 1];
+      const duration = currTime - prevTime;
+      if (
+        prevValue > aboveThresholdTarget &&
+        currValue > aboveThresholdTarget
+      ) {
+        // Both values are above target. We were above target for the whole time
+        return acc + duration;
+      } else if (prevValue > aboveThresholdTarget) {
+        // Only previous value was above target. Assume a linear drop?
+        return (
+          acc +
+          (duration * (prevValue - aboveThresholdTarget)) /
+            (prevValue - currValue)
+        );
+      } else if (currValue > aboveThresholdTarget) {
+        // Only current value is above target. Assume a linear rise?
+        return (
+          acc +
+          (duration * (currValue - aboveThresholdTarget)) /
+            (currValue - prevValue)
+        );
+      } else {
+        // Both values are below target, no time accumulation
+        return acc;
+      }
+    } else {
+      return 0;
+    }
+  }, 0);
   const labels: Highcharts.SVGElement[] = [];
 
   return {
@@ -448,14 +483,43 @@ function createHighchartsOptionsForDay(
               y: chartPaddingTop + lineHeight,
             });
             const avgValue = this.renderer.text(dayAvg.toString(), 0).add();
-
             avgValue.attr({
               ...attrs,
               x: valueX,
               y: chartPaddingTop + lineHeight,
             });
 
-            labels.push(maxLabel, maxValue, avgLabel, avgValue);
+            const tatLabel = this.renderer.text('TIME ABOVE TARGET:', 0).add();
+            tatLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+
+            const tatValue = this.renderer
+              .text(
+                moment
+                  .duration(timeAboveTarget, 'milliseconds')
+                  .format(() =>
+                    timeAboveTarget > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
+                  ),
+                0,
+              )
+              .add();
+            tatValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+
+            labels.push(
+              maxLabel,
+              maxValue,
+              avgLabel,
+              avgValue,
+              tatLabel,
+              tatValue,
+            );
           }
         },
       },
