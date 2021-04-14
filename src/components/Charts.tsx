@@ -489,7 +489,9 @@ function createHighchartsOptionsForDay(
               y: chartPaddingTop + lineHeight,
             });
 
-            const tatLabel = this.renderer.text('TIME ABOVE TARGET:', 0).add();
+            const tatLabel = this.renderer
+              .text('TIME EXPOSED (> 7.2):', 0)
+              .add();
             tatLabel.attr({
               ...attrs,
               x: labelX,
