@@ -590,7 +590,7 @@ function createHighchartsOptionsForDay(
             }
           : undefined,
         {
-          color: '#aaa',
+          color: 'rgba(65, 165, 105, 1)',
           dashStyle: 'Dash',
           value: 5,
           width: 4,
