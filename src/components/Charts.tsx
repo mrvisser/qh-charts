@@ -431,11 +431,10 @@ function createHighchartsOptionsForDay(
           const chartPaddingTop = 28.5;
           const lineHeight = 18.5;
           const labelX = 45;
-          const valueX = labelX + 140;
+          const valueX = labelX + 132;
 
           const attrs = {
             fill: '#999',
-            'font-weight': '600',
             zIndex: 1,
           };
 
@@ -450,7 +449,7 @@ function createHighchartsOptionsForDay(
             });
             const tirValue = this.renderer
               .text(
-                `${Math.floor(timeInRangePct * 100)}% (${moment
+                `<b>${Math.floor(timeInRangePct * 100)}%</b> (${moment
                   .duration(timeInRange, 'milliseconds')
                   .format(() =>
                     timeInRange > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
@@ -470,7 +469,9 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight,
             });
-            const maxValue = this.renderer.text(dayMax.toString(), 0).add();
+            const maxValue = this.renderer
+              .text(`<b>${dayMax.toString()}</b>`, 0)
+              .add();
             maxValue.attr({
               ...attrs,
               x: valueX,
@@ -483,7 +484,9 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight * 2,
             });
-            const avgValue = this.renderer.text(dayAvg.toString(), 0).add();
+            const avgValue = this.renderer
+              .text(`<b>${dayAvg.toString()}</b>`, 0)
+              .add();
             avgValue.attr({
               ...attrs,
               x: valueX,
@@ -501,11 +504,11 @@ function createHighchartsOptionsForDay(
 
             const teValue = this.renderer
               .text(
-                moment
+                `<b>${moment
                   .duration(timeExposed, 'milliseconds')
                   .format(() =>
                     timeExposed > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
-                  ),
+                  )}</b>`,
                 0,
               )
               .add();
