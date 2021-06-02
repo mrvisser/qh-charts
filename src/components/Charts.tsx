@@ -14,6 +14,7 @@ import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
 const nChartsPerPage = 3;
 
 const aboveThresholdTarget = 7.2;
+const belowThresholdTarget = 5;
 
 const ExcludePrint = styled.div`
   @media print {
@@ -408,38 +409,14 @@ function createHighchartsOptionsForDay(
         ) / 10
       : undefined;
   const dayMin = Math.min(...values);
-  const timeAboveTarget = data.reduce((acc, [currTime, currValue], i) => {
-    if (i > 0) {
-      const [prevTime, prevValue] = data[i - 1];
-      const duration = currTime - prevTime;
-      if (
-        prevValue > aboveThresholdTarget &&
-        currValue > aboveThresholdTarget
-      ) {
-        // Both values are above target. We were above target for the whole time
-        return acc + duration;
-      } else if (prevValue > aboveThresholdTarget) {
-        // Only previous value was above target. Assume a linear drop?
-        return (
-          acc +
-          (duration * (prevValue - aboveThresholdTarget)) /
-            (prevValue - currValue)
-        );
-      } else if (currValue > aboveThresholdTarget) {
-        // Only current value is above target. Assume a linear rise?
-        return (
-          acc +
-          (duration * (currValue - aboveThresholdTarget)) /
-            (currValue - prevValue)
-        );
-      } else {
-        // Both values are below target, no time accumulation
-        return acc;
-      }
-    } else {
-      return 0;
-    }
-  }, 0);
+
+  const timeExposed = calculateTimeInRange(data, {
+    lower: aboveThresholdTarget,
+  });
+  const timeInRange = calculateTimeInRange(data, {
+    upper: belowThresholdTarget,
+  });
+
   const labels: Highcharts.SVGElement[] = [];
 
   return {
@@ -461,55 +438,79 @@ function createHighchartsOptionsForDay(
           };
 
           if (dayAvg !== undefined && dayMax !== undefined) {
+            const tirLabel = this.renderer
+              .text(`TIME IN RANGE (< ${belowThresholdTarget}):`, 0)
+              .add();
+            tirLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop,
+            });
+            const tirValue = this.renderer
+              .text(
+                moment
+                  .duration(timeInRange, 'milliseconds')
+                  .format(() =>
+                    timeInRange > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
+                  ),
+                0,
+              )
+              .add();
+            tirValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop,
+            });
+
             const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
             maxLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop,
+              y: chartPaddingTop + lineHeight,
             });
             const maxValue = this.renderer.text(dayMax.toString(), 0).add();
             maxValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop,
+              y: chartPaddingTop + lineHeight,
             });
 
             const avgLabel = this.renderer.text('AVERAGE GLUCOSE:', 0).add();
             avgLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop + lineHeight,
+              y: chartPaddingTop + lineHeight * 2,
             });
             const avgValue = this.renderer.text(dayAvg.toString(), 0).add();
             avgValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop + lineHeight,
-            });
-
-            const tatLabel = this.renderer
-              .text('TIME EXPOSED (> 7.2):', 0)
-              .add();
-            tatLabel.attr({
-              ...attrs,
-              x: labelX,
               y: chartPaddingTop + lineHeight * 2,
             });
 
-            const tatValue = this.renderer
+            const teLabel = this.renderer
+              .text(`TIME EXPOSED (> ${aboveThresholdTarget}):`, 0)
+              .add();
+            teLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight * 3,
+            });
+
+            const teValue = this.renderer
               .text(
                 moment
-                  .duration(timeAboveTarget, 'milliseconds')
+                  .duration(timeExposed, 'milliseconds')
                   .format(() =>
-                    timeAboveTarget > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
+                    timeExposed > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
                   ),
                 0,
               )
               .add();
-            tatValue.attr({
+            teValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop + lineHeight * 2,
+              y: chartPaddingTop + lineHeight * 3,
             });
 
             labels.push(
@@ -517,8 +518,8 @@ function createHighchartsOptionsForDay(
               maxValue,
               avgLabel,
               avgValue,
-              tatLabel,
-              tatValue,
+              teLabel,
+              teValue,
             );
           }
         },
@@ -610,4 +611,35 @@ function createHighchartsOptionsForDay(
       },
     },
   };
+}
+
+function calculateTimeInRange(
+  data: [number, number][],
+  { lower = Number.MIN_VALUE, upper = Number.MAX_VALUE } = {},
+): number {
+  return data.reduce((acc, [currTime, currValue], i) => {
+    if (i > 0) {
+      const [prevTime, prevValue] = data[i - 1];
+      const duration = currTime - prevTime;
+      const currValueLimited = Math.min(Math.max(currValue, lower), upper);
+      const prevValueLimited = Math.min(Math.max(prevValue, lower), upper);
+      const areaOfData =
+        (currTime - prevTime) * Math.abs(currValue - prevValue);
+      const areaInRange =
+        (currTime - prevTime) * Math.abs(currValueLimited - prevValueLimited);
+
+      if (areaOfData === 0 && currValueLimited !== currValue) {
+        // prevValue and currValue are the same, and they are not within range. 0 duration
+        return acc;
+      } else if (areaOfData === 0) {
+        // prevValue and currValue are the same, and they are within range. Full duration
+        return acc + duration;
+      } else {
+        // The value is different. The percentage of duration is the percentage of overlap
+        return acc + (areaInRange / areaOfData) * duration;
+      }
+    } else {
+      return 0;
+    }
+  }, 0);
 }

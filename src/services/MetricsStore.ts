@@ -44,6 +44,8 @@ export class MetricsStore {
       .pipe(
         concatMap(([files, customerDataTimeZone]) =>
           of<() => Promise<MetricValue<number>[] | undefined>>(
+            // Whenever we get a new set of files, first emit undefined to signal that we should
+            // enter a loading / "stale" state for all consumers
             () => Promise.resolve(undefined),
             async () => {
               const csvs = files.map((file) => {
