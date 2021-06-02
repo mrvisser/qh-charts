@@ -410,12 +410,14 @@ function createHighchartsOptionsForDay(
       : undefined;
   const dayMin = Math.min(...values);
 
-  const timeExposed = calculateTimeInRange(data, {
+  const { timeInRange: timeExposed } = calculateTimeInRange(data, {
     lower: aboveThresholdTarget,
   });
-  const timeInRange = calculateTimeInRange(data, {
+  const { effectiveDuration, timeInRange } = calculateTimeInRange(data, {
     upper: belowThresholdTarget,
   });
+  const timeInRangePct =
+    effectiveDuration > 0 ? timeInRange / effectiveDuration : 1;
 
   const labels: Highcharts.SVGElement[] = [];
 
@@ -448,11 +450,11 @@ function createHighchartsOptionsForDay(
             });
             const tirValue = this.renderer
               .text(
-                moment
+                `${Math.floor(timeInRangePct * 100)}% (${moment
                   .duration(timeInRange, 'milliseconds')
                   .format(() =>
                     timeInRange > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
-                  ),
+                  )})`,
                 0,
               )
               .add();
@@ -616,30 +618,47 @@ function createHighchartsOptionsForDay(
 function calculateTimeInRange(
   data: [number, number][],
   { lower = Number.MIN_VALUE, upper = Number.MAX_VALUE } = {},
-): number {
-  return data.reduce((acc, [currTime, currValue], i) => {
-    if (i > 0) {
-      const [prevTime, prevValue] = data[i - 1];
-      const duration = currTime - prevTime;
-      const currValueLimited = Math.min(Math.max(currValue, lower), upper);
-      const prevValueLimited = Math.min(Math.max(prevValue, lower), upper);
-      const areaOfData =
-        (currTime - prevTime) * Math.abs(currValue - prevValue);
-      const areaInRange =
-        (currTime - prevTime) * Math.abs(currValueLimited - prevValueLimited);
+): { effectiveDuration: number; timeInRange: number } {
+  return data.reduce(
+    ({ effectiveDuration, timeInRange }, [currTime, currValue], i) => {
+      if (i > 0) {
+        const [prevTime, prevValue] = data[i - 1];
+        const duration = currTime - prevTime;
+        if (duration < 30 * 60 * 1000) {
+          const currValueLimited = Math.min(Math.max(currValue, lower), upper);
+          const prevValueLimited = Math.min(Math.max(prevValue, lower), upper);
+          const areaOfData =
+            (currTime - prevTime) * Math.abs(currValue - prevValue);
+          const areaInRange =
+            (currTime - prevTime) *
+            Math.abs(currValueLimited - prevValueLimited);
 
-      if (areaOfData === 0 && currValueLimited !== currValue) {
-        // prevValue and currValue are the same, and they are not within range. 0 duration
-        return acc;
-      } else if (areaOfData === 0) {
-        // prevValue and currValue are the same, and they are within range. Full duration
-        return acc + duration;
+          if (areaOfData === 0 && currValueLimited !== currValue) {
+            // prevValue and currValue are the same, and they are not within range. 0 duration
+            return {
+              effectiveDuration: effectiveDuration + duration,
+              timeInRange,
+            };
+          } else if (areaOfData === 0) {
+            // prevValue and currValue are the same, and they are within range. Full duration
+            return {
+              effectiveDuration: effectiveDuration + duration,
+              timeInRange: timeInRange + duration,
+            };
+          } else {
+            // The value is different. The percentage of duration is the percentage of overlap
+            return {
+              effectiveDuration: effectiveDuration + duration,
+              timeInRange: timeInRange + (areaInRange / areaOfData) * duration,
+            };
+          }
+        } else {
+          return { effectiveDuration, timeInRange };
+        }
       } else {
-        // The value is different. The percentage of duration is the percentage of overlap
-        return acc + (areaInRange / areaOfData) * duration;
+        return { effectiveDuration, timeInRange };
       }
-    } else {
-      return 0;
-    }
-  }, 0);
+    },
+    { effectiveDuration: 0, timeInRange: 0 },
+  );
 }
