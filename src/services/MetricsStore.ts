@@ -19,7 +19,7 @@ type CsvRecord = {
 };
 
 export const MetricsStoreContext = React.createContext<MetricsStore>(
-  (undefined as unknown) as MetricsStore,
+  undefined as unknown as MetricsStore,
 );
 
 export class MetricsStore {
@@ -36,46 +36,45 @@ export class MetricsStore {
   constructor(private readonly fileStore: FileStore) {}
 
   /** Observe changes to the blood glucose metrics. */
-  public readonly bloodGlucose$: Observable<
-    MetricValue<number>[] | undefined
-  > = combineLatest([
-    this.fileStore.filesByType$('csv'),
-    this.customerDataTimeZone$$,
-  ])
-    .pipe(
-      concatMap(([files, customerDataTimeZone]) =>
-        of<() => Promise<MetricValue<number>[] | undefined>>(
-          () => Promise.resolve(undefined),
-          async () => {
-            const csvs = files.map((file) => {
-              const data = atob(file.data);
-              const bytes = new Uint8Array(data.length);
-              for (let i = 0; i < data.length; i++) {
-                bytes[i] = data.charCodeAt(i);
-              }
-              return new TextDecoder('utf-8')
-                .decode(bytes)
-                .replaceAll('\r\n', '\n');
-            });
-            const timeValuesArr: Record<string, number>[] = await Promise.all(
-              csvs.map(parseBloodGlucoseCsv),
-            );
-            const timeValues = timeValuesArr.reduce(
-              (acc, m) => ({ ...acc, ...m }),
-              {},
-            );
-            return Object.keys(timeValues)
-              .map((timeStr) => {
-                const value = timeValues[timeStr];
-                const time = parseTime(timeStr, customerDataTimeZone);
-                return { time, value };
-              })
-              .sort((a, b) => a.time - b.time);
-          },
+  public readonly bloodGlucose$: Observable<MetricValue<number>[] | undefined> =
+    combineLatest([
+      this.fileStore.filesByType$('csv'),
+      this.customerDataTimeZone$$,
+    ])
+      .pipe(
+        concatMap(([files, customerDataTimeZone]) =>
+          of<() => Promise<MetricValue<number>[] | undefined>>(
+            () => Promise.resolve(undefined),
+            async () => {
+              const csvs = files.map((file) => {
+                const data = atob(file.data);
+                const bytes = new Uint8Array(data.length);
+                for (let i = 0; i < data.length; i++) {
+                  bytes[i] = data.charCodeAt(i);
+                }
+                return new TextDecoder('utf-8')
+                  .decode(bytes)
+                  .replaceAll('\r\n', '\n');
+              });
+              const timeValuesArr: Record<string, number>[] = await Promise.all(
+                csvs.map(parseBloodGlucoseCsv),
+              );
+              const timeValues = timeValuesArr.reduce(
+                (acc, m) => ({ ...acc, ...m }),
+                {},
+              );
+              return Object.keys(timeValues)
+                .map((timeStr) => {
+                  const value = timeValues[timeStr];
+                  const time = parseTime(timeStr, customerDataTimeZone);
+                  return { time, value };
+                })
+                .sort((a, b) => a.time - b.time);
+            },
+          ),
         ),
-      ),
-    )
-    .pipe(concatMap((fn) => fn()));
+      )
+      .pipe(concatMap((fn) => fn()));
 }
 
 function parseBloodGlucoseCsv(input: string): Promise<Record<string, number>> {

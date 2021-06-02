@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import * as HighchartsStock from 'highcharts/highstock';
@@ -105,9 +104,8 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
       ),
     [metricsStore],
   );
-  const [overallMinMaxTime, setOverallMinMaxTime] = React.useState<
-    [number, number]
-  >();
+  const [overallMinMaxTime, setOverallMinMaxTime] =
+    React.useState<[number, number]>();
   const overallHighchartsOptions = React.useMemo(() => {
     return overallBloodGlucose !== undefined
       ? createHighchartsOptionsOverall(

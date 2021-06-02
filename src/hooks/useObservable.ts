@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React from 'react';
-import { Observable } from 'rxjs';
+import { Observable } from 'rxjs/internal/Observable';
 
 export type ObserverFunction<T> = () => Observable<T> | undefined;
 
@@ -32,9 +32,8 @@ export function useObservable<T>(
   deps: React.DependencyList,
   initialValue?: T,
 ): [typeof initialValue] {
-  const [value, setValue] = React.useState<T | typeof initialValue>(
-    initialValue,
-  );
+  const [value, setValue] =
+    React.useState<T | typeof initialValue>(initialValue);
   const cb = React.useCallback(observableGenerator, deps);
 
   /** When the callback changes, reinvoke it and subscribe to the new observable. */

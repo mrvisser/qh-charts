@@ -19,7 +19,7 @@ export type ProcessedFiles = {
 };
 
 export const FileStoreContext = React.createContext<FileStore>(
-  (undefined as unknown) as FileStore,
+  undefined as unknown as FileStore,
 );
 
 export class FileStore {
