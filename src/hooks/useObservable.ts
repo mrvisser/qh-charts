@@ -32,8 +32,9 @@ export function useObservable<T>(
   deps: React.DependencyList,
   initialValue?: T,
 ): [typeof initialValue] {
-  const [value, setValue] =
-    React.useState<T | typeof initialValue>(initialValue);
+  const [value, setValue] = React.useState<T | typeof initialValue>(
+    initialValue,
+  );
   const cb = React.useCallback(observableGenerator, deps);
 
   /** When the callback changes, reinvoke it and subscribe to the new observable. */
