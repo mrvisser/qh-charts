@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React from 'react';
-import { Observable } from 'rxjs/internal/Observable';
+import { Observable } from 'rxjs';
 
 export type ObserverFunction<T> = () => Observable<T> | undefined;
 
