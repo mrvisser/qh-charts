@@ -455,7 +455,10 @@ function createHighchartsOptionsForCaseStudy(
       : undefined;
   const timeToBaseline =
     timeToPeak !== undefined
-      ? calculateTimeToMin(data[0].data.filter(([t]) => t > timeToPeak))
+      ? calculateTimeToBaseline(
+          data[0].data[0][1] * 1.2,
+          data[0].data.filter(([t]) => t > timeToPeak),
+        )
       : undefined;
 
   return {
@@ -632,10 +635,14 @@ function calculateTimeToMax(data: [number, number][]): number {
   return maxDataPoint[0];
 }
 
-function calculateTimeToMin(data: [number, number][]): number {
-  const minDataPoint = data.reduce<[number, number]>(
-    (acc, curr) => (curr[1] < acc[1] ? curr : acc),
-    [-1, Number.MAX_VALUE],
-  );
-  return minDataPoint[0];
+function calculateTimeToBaseline(
+  baseline: number,
+  data: [number, number][],
+): number {
+  for (const [t, v] of data) {
+    if (v <= baseline) {
+      return t;
+    }
+  }
+  return -1;
 }
