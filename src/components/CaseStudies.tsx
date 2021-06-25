@@ -224,30 +224,56 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         }
       }
 
-      setCharts(
-        markers.map((marker) => ({
-          id: marker.value,
-          options: createHighchartsOptionsForCaseStudy(
-            marker.color,
-            dataByChartId[marker.value],
-            {
-              max: durationMillis,
-              min: 0,
-            },
-            {
-              max:
-                overrideYMax === undefined
-                  ? Math.ceil(yMaxValue * 2) / 2
-                  : overrideYMax,
-              min:
-                overrideYMin === undefined
-                  ? Math.floor(yMinValue * 2) / 2
-                  : overrideYMin,
-            },
-          ),
-          title: new Date(marker.value).toLocaleString(),
-        })),
-      );
+      const comparisonChart = {
+        id: 0,
+        options: createHighchartsOptionsForCaseStudy(
+          markers.map((marker) => ({
+            color: marker.color,
+            data: dataByChartId[marker.value],
+          })),
+          {
+            max: durationMillis,
+            min: 0,
+          },
+          {
+            max:
+              overrideYMax === undefined
+                ? Math.ceil(yMaxValue * 2) / 2
+                : overrideYMax,
+            min:
+              overrideYMin === undefined
+                ? Math.floor(yMinValue * 2) / 2
+                : overrideYMin,
+          },
+        ),
+        title: 'Overall',
+      };
+
+      const studyCharts = markers.map((marker) => ({
+        id: marker.value,
+        options: createHighchartsOptionsForCaseStudy(
+          [{ color: marker.color, data: dataByChartId[marker.value] }],
+          {
+            max: durationMillis,
+            min: 0,
+          },
+          {
+            max:
+              overrideYMax === undefined
+                ? Math.ceil(yMaxValue * 2) / 2
+                : overrideYMax,
+            min:
+              overrideYMin === undefined
+                ? Math.floor(yMinValue * 2) / 2
+                : overrideYMin,
+          },
+        ),
+        title: moment
+          .tz(new Date(marker.value), timezone)
+          .format('dddd, MMMM Do @ h:mm A'),
+      }));
+
+      setCharts([comparisonChart, ...studyCharts]);
     }
   }, [
     hours,
@@ -409,15 +435,14 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 };
 
 function createHighchartsOptionsForCaseStudy(
-  color: string,
-  data: [number, number][],
+  data: { color: string; data: [number, number][]; title?: string }[],
   xMinMax: { min: number; max: number },
   yMinMax: {
     min: number;
     max: number;
   },
 ): Highcharts.Options {
-  const values = data.map((p) => p[1]);
+  const values = data.flatMap((p) => p.data).map((p) => p[1]);
   const chartMax = Math.max(...values);
 
   return {
@@ -429,7 +454,7 @@ function createHighchartsOptionsForCaseStudy(
       },
       type: 'spline',
     },
-    colors: [color],
+    colors: data.map(({ color }) => color),
     credits: {
       enabled: false,
     },
@@ -446,13 +471,7 @@ function createHighchartsOptionsForCaseStudy(
         },
       },
     },
-    series: [
-      {
-        data,
-        name: 'mmol/L',
-        type: 'spline',
-      },
-    ],
+    series: data.map(({ data }) => ({ data, name: 'mmol/L', type: 'spline' })),
     time: {
       moment,
       timezone: 'UTC',
