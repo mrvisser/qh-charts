@@ -184,7 +184,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       for (const [t, v] of overallBloodGlucose) {
         for (let i = 0; i < ids.length && ids[i] <= t; i++) {
           if (t < ids[i] + durationMillis) {
-            dataByChartId[ids[i]].push([t, v]);
+            dataByChartId[ids[i]].push([t - ids[i], v]);
           }
         }
       }
@@ -193,10 +193,12 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         markers.map((marker) => ({
           id: marker.value,
           options: createHighchartsOptionsForCaseStudy(
-            timezone,
             marker.color,
             dataByChartId[marker.value],
-            { max: marker.value + durationMillis, min: marker.value },
+            {
+              max: durationMillis,
+              min: 0,
+            },
             { max: 12, min: 3 },
           ),
           title: new Date(marker.value).toLocaleString(),
@@ -211,7 +213,6 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         <StalkingButton path={mdiChevronLeft} onClick={onBack} />
         <StalkingButton path={mdiCog} onClick={() => setShowSettings(true)} />
       </StalkingButtonGroup>
-
       {charts.length > 0 ? (
         <CaseStudyChartsContainer>
           <CaseStudyChartsHeading>Case Studies</CaseStudyChartsHeading>
@@ -315,7 +316,6 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 };
 
 function createHighchartsOptionsForCaseStudy(
-  timezone: string,
   color: string,
   data: [number, number][],
   xMinMax: { min: number; max: number },
@@ -362,7 +362,7 @@ function createHighchartsOptionsForCaseStudy(
     ],
     time: {
       moment,
-      timezone,
+      timezone: 'UTC',
     },
     title: {
       text: '',
