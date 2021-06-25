@@ -541,9 +541,7 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight,
             });
-            const maxValue = this.renderer
-              .text(`<b>${dayMax.toString()}</b>`, 0)
-              .add();
+            const maxValue = this.renderer.text(`<b>${dayMax}</b>`, 0).add();
             maxValue.attr({
               ...attrs,
               x: valueX,
@@ -556,9 +554,7 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight * 2,
             });
-            const avgValue = this.renderer
-              .text(`<b>${dayAvg.toString()}</b>`, 0)
-              .add();
+            const avgValue = this.renderer.text(`<b>${dayAvg}</b>`, 0).add();
             avgValue.attr({
               ...attrs,
               x: valueX,

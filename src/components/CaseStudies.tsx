@@ -204,8 +204,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 
     if (overallBloodGlucose !== undefined) {
       const durationMillis = hours * 60 * 60 * 1000;
-      let yMinValue = Number.MAX_VALUE;
-      let yMaxValue = Number.MIN_VALUE;
+      let yMinValue = 3;
+      let yMaxValue = 8;
 
       // Build the data
       const dataByChartId: Record<number, [number, number][]> = {};
@@ -245,6 +245,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 ? Math.floor(yMinValue * 2) / 2
                 : overrideYMin,
           },
+          false,
         ),
         title: 'Overall',
       };
@@ -267,6 +268,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 ? Math.floor(yMinValue * 2) / 2
                 : overrideYMin,
           },
+          true,
         ),
         title: moment
           .tz(new Date(marker.value), timezone)
@@ -441,12 +443,113 @@ function createHighchartsOptionsForCaseStudy(
     min: number;
     max: number;
   },
+  includeLabels: boolean,
 ): Highcharts.Options {
   const values = data.flatMap((p) => p.data).map((p) => p[1]);
   const chartMax = Math.max(...values);
 
+  const labels: Highcharts.SVGElement[] = [];
+  const timeToPeak =
+    includeLabels && data.length === 1
+      ? calculateTimeToMax(data[0].data)
+      : undefined;
+  const timeToBaseline =
+    timeToPeak !== undefined
+      ? calculateTimeToMin(data[0].data.filter(([t]) => t > timeToPeak))
+      : undefined;
+
   return {
     chart: {
+      events: {
+        render() {
+          labels.forEach((l) => l.destroy());
+          labels.length = 0;
+
+          if (timeToPeak !== undefined && timeToBaseline !== undefined) {
+            const chartPaddingTop = 28.5;
+            const lineHeight = 18.5;
+            const labelX = 45;
+            const valueX = labelX + 132;
+
+            const attrs = {
+              fill: '#999',
+              zIndex: 1,
+            };
+
+            const ttpLabel = this.renderer.text(`TIME TO PEAK:`, 0).add();
+            ttpLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop,
+            });
+            const ttpValue = this.renderer
+              .text(
+                `<b>${moment
+                  .duration(timeToPeak, 'milliseconds')
+                  .format(() =>
+                    timeToPeak > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
+                  )}</b>`,
+                0,
+              )
+              .add();
+            ttpValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop,
+            });
+
+            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
+            maxLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight,
+            });
+            const maxValue = this.renderer.text(`<b>${chartMax}</b>`, 0).add();
+            maxValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop + lineHeight,
+            });
+
+            const ttbLabel = this.renderer.text('TIME TO BASELINE:', 0).add();
+            ttbLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+            const ttbValue = this.renderer
+              .text(
+                `<b>${
+                  timeToBaseline !== -1
+                    ? moment
+                        .duration(timeToBaseline, 'milliseconds')
+                        .format(() =>
+                          timeToBaseline > 60 * 60 * 1000
+                            ? 'h[h] m[m]'
+                            : 'm[m]',
+                        )
+                    : 'N/A'
+                }</b>`,
+                0,
+              )
+              .add();
+            ttbValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+
+            labels.push(
+              ttpLabel,
+              ttpValue,
+              maxLabel,
+              maxValue,
+              ttbLabel,
+              ttbValue,
+            );
+          }
+        },
+      },
       height: 225,
       margin: [15, 0, 30, 40],
       style: {
@@ -519,4 +622,20 @@ function createHighchartsOptionsForCaseStudy(
       },
     },
   };
+}
+
+function calculateTimeToMax(data: [number, number][]): number {
+  const maxDataPoint = data.reduce<[number, number]>(
+    (acc, curr) => (curr[1] > acc[1] ? curr : acc),
+    [-1, Number.MIN_VALUE],
+  );
+  return maxDataPoint[0];
+}
+
+function calculateTimeToMin(data: [number, number][]): number {
+  const minDataPoint = data.reduce<[number, number]>(
+    (acc, curr) => (curr[1] < acc[1] ? curr : acc),
+    [-1, Number.MAX_VALUE],
+  );
+  return minDataPoint[0];
 }
