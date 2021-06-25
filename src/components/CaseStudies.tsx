@@ -257,13 +257,15 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         <SettingsSection>
           <SettingsSectionTitle>How many hours after:</SettingsSectionTitle>
           <input
+            max="23"
+            min="1"
             placeholder={hours.toString()}
+            type="number"
             onBlur={(ev) => {
               const nextHours = parseFloat(ev.target.value.trim());
               if (!isNaN(nextHours)) {
                 setHours(nextHours);
               }
-              ev.target.value = '';
             }}
           />
         </SettingsSection>
