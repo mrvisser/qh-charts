@@ -40,6 +40,10 @@ const SettingsSectionSubTitle = styled.h3`
   margin-bottom: 15px;
 `;
 
+const SettingsGlucoseInput = styled(InputText)`
+  width: 50px;
+`;
+
 const DailyChartsContainer = styled.div`
   align-items: center;
   display: flex;
@@ -341,38 +345,30 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           <SettingsSectionSubTitle>
             Selected Glucose Range:
           </SettingsSectionSubTitle>
-          <div>
-            <label>
-              Min:{' '}
-              <InputText
-                placeholder={
-                  overrideYMin !== undefined
-                    ? overrideYMin.toString()
-                    : 'Enter a minimum'
-                }
-                onBlur={(ev) => {
-                  const value = parseFloat(ev.target.value.trim());
-                  setOverrideYMin(isNaN(value) ? undefined : value);
-                }}
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              Max:{' '}
-              <InputText
-                placeholder={
-                  overrideYMax !== undefined
-                    ? overrideYMax.toString()
-                    : 'Enter a maximum'
-                }
-                onBlur={(ev) => {
-                  const value = parseFloat(ev.target.value.trim());
-                  setOverrideYMax(isNaN(value) ? undefined : value);
-                }}
-              />
-            </label>
-          </div>
+          <label>
+            Min:{' '}
+            <SettingsGlucoseInput
+              onBlur={(ev) => {
+                const value = parseFloat(ev.target.value.trim());
+                setOverrideYMin(isNaN(value) ? undefined : value);
+              }}
+              placeholder={
+                overrideYMin !== undefined ? overrideYMin.toString() : ''
+              }
+            />
+          </label>
+          <label style={{ marginLeft: '15px' }}>
+            Max:{' '}
+            <SettingsGlucoseInput
+              onBlur={(ev) => {
+                const value = parseFloat(ev.target.value.trim());
+                setOverrideYMax(isNaN(value) ? undefined : value);
+              }}
+              placeholder={
+                overrideYMax !== undefined ? overrideYMax.toString() : ''
+              }
+            />
+          </label>
         </SettingsSection>
       </SettingsPanel>
     </>

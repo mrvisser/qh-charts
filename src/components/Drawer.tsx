@@ -77,6 +77,16 @@ export const Drawer: React.FC<DrawerProps> = ({
 }) => {
   const [isScrolling, setIsScrolling] = React.useState(false);
 
+  React.useEffect(() => {
+    if (active) {
+      // eslint-disable-next-line no-console
+      console.log('active changed', active);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+  }, [active]);
+
   return (
     <>
       <Mask active={active} onClick={onClose} />
