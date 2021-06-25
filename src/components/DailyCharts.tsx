@@ -1,7 +1,6 @@
-import { mdiChevronLeft } from '@mdi/js';
+import { mdiChevronLeft, mdiCog } from '@mdi/js';
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
-import * as HighchartsStock from 'highcharts/highstock';
 import _ from 'lodash';
 import moment from 'moment-timezone';
 import React from 'react';
@@ -11,6 +10,8 @@ import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
+import { ChartZoomable } from './ChartZoomable';
+import { Drawer } from './Drawer';
 import { StalkingButton, StalkingButtonGroup } from './StalkingButtonGroup';
 
 const nChartsPerPage = 3;
@@ -18,10 +19,18 @@ const nChartsPerPage = 3;
 const aboveThresholdTarget = 7.2;
 const belowThresholdTarget = 5;
 
-const ExcludePrint = styled.div`
-  @media print {
-    display: none;
-  }
+const SettingsPanel = styled(Drawer)`
+  min-width: 50vw;
+`;
+
+const SettingsSection = styled.div`
+  padding: 25px;
+`;
+
+const SettingsSectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 25px;
 `;
 
 const DailyChartsContainer = styled.div`
@@ -104,6 +113,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
 }) => {
   const metricsStore = React.useContext(MetricsStoreContext);
   const [dayFilter, setDayFilter] = React.useState<Range>();
+  const [showSettings, setShowSettings] = React.useState(false);
 
   const [overallBloodGlucose] = useObservable(
     () =>
@@ -125,18 +135,6 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
         )
       : undefined;
   }, [overallBloodGlucose, overallMinMaxTime, timezone]);
-  const overallHighchartsFilterOptions = React.useMemo(
-    () =>
-      overallBloodGlucose !== undefined
-        ? createHighchartsOptionsOverall(
-            timezone,
-            overallBloodGlucose,
-            undefined,
-            (start, end) => setOverallMinMaxTime([start, end]),
-          )
-        : undefined,
-    [overallBloodGlucose, timezone],
-  );
 
   const dailyBloodGlucose = React.useMemo(() => {
     if (overallBloodGlucose !== undefined) {
@@ -215,20 +213,12 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     <>
       <StalkingButtonGroup>
         <StalkingButton path={mdiChevronLeft} onClick={onBack} />
+        <StalkingButton path={mdiCog} onClick={() => setShowSettings(true)} />
       </StalkingButtonGroup>
       <DailyChartsContainer {...divProps}>
         <DailyChartsHeading>Overall</DailyChartsHeading>
-        {overallHighchartsOptions !== undefined &&
-        overallHighchartsFilterOptions !== undefined ? (
+        {overallHighchartsOptions !== undefined ? (
           <DailyChartsPageGroup key={`page-group-overall`}>
-            <ExcludePrint>
-              <HighchartsReact
-                id="overall-range-filter"
-                constructorType="stockChart"
-                highcharts={HighchartsStock}
-                options={overallHighchartsFilterOptions}
-              />
-            </ExcludePrint>
             <DailyChartContainer>
               <DailyChart>
                 <HighchartsReact
@@ -240,35 +230,6 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           </DailyChartsPageGroup>
         ) : undefined}
         <DailyChartsHeading>Daily</DailyChartsHeading>
-        {dailyMinMaxDay !== undefined
-          ? (() => {
-              const [minDate, maxDate] = dailyMinMaxDay.map((m) => m.toDate());
-              return (
-                <DateRangePickerContainer>
-                  <DateRangePicker
-                    maxDate={maxDate}
-                    minDate={minDate}
-                    moveRangeOnFirstSelection={false}
-                    onChange={(range) => {
-                      if ('selection' in range) {
-                        setDayFilter(range.selection);
-                      }
-                    }}
-                    ranges={[
-                      dayFilter === undefined
-                        ? {
-                            endDate: maxDate,
-                            key: 'selection',
-                            startDate: minDate,
-                          }
-                        : dayFilter,
-                    ]}
-                    showSelectionPreview={true}
-                  />
-                </DateRangePickerContainer>
-              );
-            })()
-          : undefined}
         {dailyHighchartsOptions !== undefined
           ? dailyHighchartsOptions.map((pageGroup) => (
               <DailyChartsPageGroup key={`page-group-${pageGroup[0].title}`}>
@@ -311,6 +272,54 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
             ))
           : undefined}
       </DailyChartsContainer>
+      <SettingsPanel
+        active={showSettings}
+        onClose={() => setShowSettings(false)}
+        title="Settings"
+      >
+        <SettingsSection>
+          <SettingsSectionTitle>Overall Chart Settings</SettingsSectionTitle>
+          <ChartZoomable
+            id="overall-range-filter"
+            onChangeRange={(start, end) => setOverallMinMaxTime([start, end])}
+            timezone={timezone}
+          />
+        </SettingsSection>
+        <SettingsSection>
+          <SettingsSectionTitle>Daily Charts Settings</SettingsSectionTitle>
+          {dailyMinMaxDay !== undefined
+            ? (() => {
+                const [minDate, maxDate] = dailyMinMaxDay.map((m) =>
+                  m.toDate(),
+                );
+                return (
+                  <DateRangePickerContainer>
+                    <DateRangePicker
+                      maxDate={maxDate}
+                      minDate={minDate}
+                      moveRangeOnFirstSelection={false}
+                      onChange={(range) => {
+                        if ('selection' in range) {
+                          setDayFilter(range.selection);
+                        }
+                      }}
+                      ranges={[
+                        dayFilter === undefined
+                          ? {
+                              endDate: maxDate,
+                              key: 'selection',
+                              startDate: minDate,
+                            }
+                          : dayFilter,
+                      ]}
+                      showSelectionPreview={true}
+                    />
+                  </DateRangePickerContainer>
+                );
+              })()
+            : undefined}
+        </SettingsSection>
+      </SettingsPanel>
     </>
   );
 };
