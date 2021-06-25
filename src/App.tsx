@@ -2,8 +2,8 @@ import React from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import reset from 'styled-reset';
 
-import { Charts } from './components/Charts';
 import { FileDropZone } from './components/FileDropZone';
+import { ReportSelector } from './components/ReportSelector';
 import { useObservable } from './hooks/useObservable';
 import { FileStore, FileStoreContext } from './services/FileStore';
 import { MetricsStore, MetricsStoreContext } from './services/MetricsStore';
@@ -85,7 +85,7 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
         <MetricsStoreContext.Provider value={metricsStore}>
           <FileDropZone>
             {csvFiles.length > 0 ? (
-              <Charts timezone="America/Toronto" />
+              <ReportSelector />
             ) : dataUrl === undefined ? (
               <Fullscreen>
                 <span>

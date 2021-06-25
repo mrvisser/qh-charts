@@ -1,3 +1,4 @@
+import { mdiChevronLeft } from '@mdi/js';
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import * as HighchartsStock from 'highcharts/highstock';
@@ -10,6 +11,7 @@ import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
 import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
+import { StalkingButton, StalkingButtonGroup } from './StalkingButtonGroup';
 
 const nChartsPerPage = 3;
 
@@ -22,13 +24,13 @@ const ExcludePrint = styled.div`
   }
 `;
 
-const ChartsContainer = styled.div`
+const DailyChartsContainer = styled.div`
   align-items: center;
   display: flex;
   flex-direction: column;
 `;
 
-const ChartsHeading = styled.h1`
+const DailyChartsHeading = styled.h1`
   font-size: 2em;
   padding: 25px;
   @media print {
@@ -43,7 +45,7 @@ const DateRangePickerContainer = styled.div`
   }
 `;
 
-const PageGroup = styled.div`
+const DailyChartsPageGroup = styled.div`
   break-after: always;
   break-inside: avoid;
   display: flex;
@@ -57,7 +59,7 @@ const PageGroup = styled.div`
   }
 `;
 
-const ChartContainer = styled.div`
+const DailyChartContainer = styled.div`
   display: flex;
   flex-direction: column;
   margin: 0 20px;
@@ -74,14 +76,14 @@ const ChartContainer = styled.div`
   }
 `;
 
-const ChartHeading = styled.h2`
+const DailyChartHeading = styled.h2`
   font-weight: 600;
   margin: 5px 0 0 0;
   text-align: center;
   text-transform: uppercase;
 `;
 
-const Chart = styled.div`
+const DailyChart = styled.div`
   flex: 1;
 `;
 
@@ -90,11 +92,16 @@ type DayData = {
   data: [number, number][];
 };
 
-export type ChartsProps = React.HTMLAttributes<HTMLDivElement> & {
+export type DailyChartsProps = React.HTMLAttributes<HTMLDivElement> & {
+  onBack: () => void;
   timezone: string;
 };
 
-export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
+export const DailyCharts: React.FC<DailyChartsProps> = ({
+  onBack,
+  timezone,
+  ...divProps
+}) => {
   const metricsStore = React.useContext(MetricsStoreContext);
   const [dayFilter, setDayFilter] = React.useState<Range>();
 
@@ -205,101 +212,106 @@ export const Charts: React.FC<ChartsProps> = ({ timezone, ...divProps }) => {
   }, [dailyBloodGlucose, dayFilter, timezone]);
 
   return (
-    <ChartsContainer {...divProps}>
-      <ChartsHeading>Overall</ChartsHeading>
-      {overallHighchartsOptions !== undefined &&
-      overallHighchartsFilterOptions !== undefined ? (
-        <PageGroup key={`page-group-overall`}>
-          <ExcludePrint>
-            <HighchartsReact
-              id="overall-range-filter"
-              constructorType="stockChart"
-              highcharts={HighchartsStock}
-              options={overallHighchartsFilterOptions}
-            />
-          </ExcludePrint>
-          <ChartContainer>
-            <Chart>
+    <>
+      <StalkingButtonGroup>
+        <StalkingButton path={mdiChevronLeft} onClick={onBack} />
+      </StalkingButtonGroup>
+      <DailyChartsContainer {...divProps}>
+        <DailyChartsHeading>Overall</DailyChartsHeading>
+        {overallHighchartsOptions !== undefined &&
+        overallHighchartsFilterOptions !== undefined ? (
+          <DailyChartsPageGroup key={`page-group-overall`}>
+            <ExcludePrint>
               <HighchartsReact
-                highcharts={Highcharts}
-                options={{ ...overallHighchartsOptions }}
+                id="overall-range-filter"
+                constructorType="stockChart"
+                highcharts={HighchartsStock}
+                options={overallHighchartsFilterOptions}
               />
-            </Chart>
-          </ChartContainer>
-        </PageGroup>
-      ) : undefined}
-      <ChartsHeading>Daily</ChartsHeading>
-      {dailyMinMaxDay !== undefined
-        ? (() => {
-            const [minDate, maxDate] = dailyMinMaxDay.map((m) => m.toDate());
-            return (
-              <DateRangePickerContainer>
-                <DateRangePicker
-                  maxDate={maxDate}
-                  minDate={minDate}
-                  moveRangeOnFirstSelection={false}
-                  onChange={(range) => {
-                    if ('selection' in range) {
-                      setDayFilter(range.selection);
-                    }
-                  }}
-                  ranges={[
-                    dayFilter === undefined
-                      ? {
-                          endDate: maxDate,
-                          key: 'selection',
-                          startDate: minDate,
-                        }
-                      : dayFilter,
-                  ]}
-                  showSelectionPreview={true}
+            </ExcludePrint>
+            <DailyChartContainer>
+              <DailyChart>
+                <HighchartsReact
+                  highcharts={Highcharts}
+                  options={{ ...overallHighchartsOptions }}
                 />
-              </DateRangePickerContainer>
-            );
-          })()
-        : undefined}
-      {dailyHighchartsOptions !== undefined
-        ? dailyHighchartsOptions.map((pageGroup) => (
-            <PageGroup key={`page-group-${pageGroup[0].title}`}>
-              {pageGroup
-                .concat(
-                  // Concatenate dummy charts to fill up each page of 3. This ensures that 1 or
-                  // 2 charts on a page is always layed out the same way incrementally as a 3-chart
-                  // page. This is for print consistency when have 1 day, then 2, then 3 on a page.
-                  new Array(nChartsPerPage - pageGroup.length).fill({
-                    ...pageGroup[0],
-                    hidden: true,
-                    options: {
-                      ...pageGroup[0].options,
-                      chart: {
-                        ...pageGroup[0].options.chart,
-                        // Don't invoke any load events for the page-filler items
-                        events: {},
+              </DailyChart>
+            </DailyChartContainer>
+          </DailyChartsPageGroup>
+        ) : undefined}
+        <DailyChartsHeading>Daily</DailyChartsHeading>
+        {dailyMinMaxDay !== undefined
+          ? (() => {
+              const [minDate, maxDate] = dailyMinMaxDay.map((m) => m.toDate());
+              return (
+                <DateRangePickerContainer>
+                  <DateRangePicker
+                    maxDate={maxDate}
+                    minDate={minDate}
+                    moveRangeOnFirstSelection={false}
+                    onChange={(range) => {
+                      if ('selection' in range) {
+                        setDayFilter(range.selection);
+                      }
+                    }}
+                    ranges={[
+                      dayFilter === undefined
+                        ? {
+                            endDate: maxDate,
+                            key: 'selection',
+                            startDate: minDate,
+                          }
+                        : dayFilter,
+                    ]}
+                    showSelectionPreview={true}
+                  />
+                </DateRangePickerContainer>
+              );
+            })()
+          : undefined}
+        {dailyHighchartsOptions !== undefined
+          ? dailyHighchartsOptions.map((pageGroup) => (
+              <DailyChartsPageGroup key={`page-group-${pageGroup[0].title}`}>
+                {pageGroup
+                  .concat(
+                    // Concatenate dummy charts to fill up each page of 3. This ensures that 1 or
+                    // 2 charts on a page is always layed out the same way incrementally as a 3-chart
+                    // page. This is for print consistency when have 1 day, then 2, then 3 on a page.
+                    new Array(nChartsPerPage - pageGroup.length).fill({
+                      ...pageGroup[0],
+                      hidden: true,
+                      options: {
+                        ...pageGroup[0].options,
+                        chart: {
+                          ...pageGroup[0].options.chart,
+                          // Don't invoke any load events for the page-filler items
+                          events: {},
+                        },
                       },
-                    },
-                  }),
-                )
-                .map(({ hidden = false, title, options }, i) => {
-                  return (
-                    <ChartContainer
-                      className={hidden ? 'hidden' : 'visible'}
-                      key={i}
-                    >
-                      <ChartHeading>{title}</ChartHeading>
-                      <Chart>
-                        <HighchartsReact
-                          highcharts={Highcharts}
-                          key={`chart-${title}`}
-                          options={options}
-                        />
-                      </Chart>
-                    </ChartContainer>
-                  );
-                })}
-            </PageGroup>
-          ))
-        : undefined}
-    </ChartsContainer>
+                    }),
+                  )
+                  .map(({ hidden = false, title, options }, i) => {
+                    return (
+                      <DailyChartContainer
+                        className={hidden ? 'hidden' : 'visible'}
+                        key={i}
+                      >
+                        <DailyChartHeading>{title}</DailyChartHeading>
+                        <DailyChart>
+                          <HighchartsReact
+                            highcharts={Highcharts}
+                            key={`chart-${title}`}
+                            options={options}
+                          />
+                        </DailyChart>
+                      </DailyChartContainer>
+                    );
+                  })}
+              </DailyChartsPageGroup>
+            ))
+          : undefined}
+      </DailyChartsContainer>
+    </>
   );
 };
 
