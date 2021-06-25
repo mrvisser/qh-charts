@@ -27,6 +27,11 @@ const SettingsPanel = styled(Drawer)`
 
 const SettingsSection = styled.div`
   padding: 25px;
+
+  & label {
+    display: block;
+    margin-bottom: 15px;
+  }
 `;
 
 const SettingsSectionTitle = styled.h2`
@@ -35,7 +40,9 @@ const SettingsSectionTitle = styled.h2`
   margin-bottom: 25px;
 `;
 
-const SettingsCaseStudyList = styled.ul``;
+const SettingsCaseStudyList = styled.ul`
+  margin-top: 25px;
+`;
 const SettingsCaseStudyListItem = styled.li`
   align-items: center;
   border-radius: 5px;
@@ -89,6 +96,10 @@ const SettingsCaseStudyColorEdit = styled.div`
   bottom: 0;
   left: 4em;
   position: absolute;
+`;
+
+const SettingsGlucoseInput = styled(InputText)`
+  width: 50px;
 `;
 
 const CaseStudyChartsContainer = styled.div`
@@ -163,6 +174,9 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
   const [showSettings, setShowSettings] = React.useState(false);
   const [hours, setHours] = React.useState(4);
   const [markers, setMarkers] = React.useState<ChartZoomablePropsMarker[]>([]);
+  const [overrideYMin, setOverrideYMin] = React.useState<number>();
+  const [overrideYMax, setOverrideYMax] = React.useState<number>();
+
   const [charts, setCharts] = React.useState<
     { id: number; title: string; options: Highcharts.Options }[]
   >([]);
@@ -190,6 +204,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 
     if (overallBloodGlucose !== undefined) {
       const durationMillis = hours * 60 * 60 * 1000;
+      let yMinValue = Number.MAX_VALUE;
+      let yMaxValue = Number.MIN_VALUE;
 
       // Build the data
       const dataByChartId: Record<number, [number, number][]> = {};
@@ -201,6 +217,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       for (const [t, v] of overallBloodGlucose) {
         for (let i = 0; i < ids.length && ids[i] <= t; i++) {
           if (t < ids[i] + durationMillis) {
+            yMinValue = Math.min(yMinValue, v);
+            yMaxValue = Math.max(yMaxValue, v);
             dataByChartId[ids[i]].push([t - ids[i], v]);
           }
         }
@@ -216,13 +234,29 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
               max: durationMillis,
               min: 0,
             },
-            { max: 12, min: 3 },
+            {
+              max:
+                overrideYMax === undefined
+                  ? Math.ceil(yMaxValue * 2) / 2
+                  : overrideYMax,
+              min:
+                overrideYMin === undefined
+                  ? Math.floor(yMinValue * 2) / 2
+                  : overrideYMin,
+            },
           ),
           title: new Date(marker.value).toLocaleString(),
         })),
       );
     }
-  }, [hours, markers, overallBloodGlucose, timezone]);
+  }, [
+    hours,
+    markers,
+    overallBloodGlucose,
+    overrideYMax,
+    overrideYMin,
+    timezone,
+  ]);
 
   return (
     <>
@@ -251,12 +285,10 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       <SettingsPanel
         active={showSettings}
         onClose={() => setShowSettings(false)}
-        title="Case Studies"
+        title="Settings"
       >
         <SettingsSection>
-          <SettingsSectionTitle>
-            Click to create case studies:
-          </SettingsSectionTitle>
+          <SettingsSectionTitle>Case Studies</SettingsSectionTitle>
           <ChartZoomable
             markers={markers}
             onSelectTime={(value) =>
@@ -270,24 +302,6 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
             }
             timezone={timezone}
           />
-        </SettingsSection>
-        <SettingsSection>
-          <SettingsSectionTitle>How many hours after:</SettingsSectionTitle>
-          <input
-            max="23"
-            min="1"
-            placeholder={hours.toString()}
-            type="number"
-            onBlur={(ev) => {
-              const nextHours = parseFloat(ev.target.value.trim());
-              if (!isNaN(nextHours)) {
-                setHours(nextHours);
-              }
-            }}
-          />
-        </SettingsSection>
-        <SettingsSection>
-          <SettingsSectionTitle>Update their appearance:</SettingsSectionTitle>
           <SettingsCaseStudyList>
             <SettingsCaseStudyListHeader>
               <div>Date &amp; Time</div>
@@ -345,6 +359,49 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
               </SettingsCaseStudyListItem>
             ))}
           </SettingsCaseStudyList>
+        </SettingsSection>
+        <SettingsSection>
+          <SettingsSectionTitle>Parameters</SettingsSectionTitle>
+          <label>
+            Duration:{' '}
+            <InputText
+              max="23"
+              min="1"
+              placeholder={hours.toString()}
+              type="number"
+              onBlur={(ev) => {
+                const nextHours = parseFloat(ev.target.value.trim());
+                if (!isNaN(nextHours)) {
+                  setHours(nextHours);
+                }
+              }}
+            />{' '}
+            (hours)
+          </label>
+          <label>
+            Min Glucose:{' '}
+            <SettingsGlucoseInput
+              placeholder={
+                overrideYMin === undefined ? undefined : overrideYMin.toString()
+              }
+              onBlur={(ev) => {
+                const value = parseFloat(ev.target.value.trim());
+                setOverrideYMin(isNaN(value) ? undefined : value);
+              }}
+            />
+          </label>
+          <label>
+            Max Glucose:{' '}
+            <SettingsGlucoseInput
+              placeholder={
+                overrideYMax === undefined ? undefined : overrideYMax.toString()
+              }
+              onBlur={(ev) => {
+                const value = parseFloat(ev.target.value.trim());
+                setOverrideYMax(isNaN(value) ? undefined : value);
+              }}
+            />
+          </label>
         </SettingsSection>
       </SettingsPanel>
     </>
