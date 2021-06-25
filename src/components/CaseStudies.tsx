@@ -10,6 +10,7 @@ import styled from 'styled-components';
 import { ChartZoomable, ChartZoomablePropsMarker } from './ChartZoomable';
 import { Drawer } from './Drawer';
 import { IconButton } from './IconButton';
+import { InputText } from './InputText';
 import { StalkingButton, StalkingButtonGroup } from './StalkingButtonGroup';
 
 import { useObservable } from 'src/hooks/useObservable';
@@ -61,18 +62,6 @@ const SettingsCaseStudyListItem = styled.li`
   & > div:nth-child(3) {
     flex: 1;
     justify-content: flex-end;
-  }
-
-  & input {
-    border: solid 1px #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-    margin-right: 10px;
-    padding: 10px;
-  }
-
-  & input:focus {
-    border-color: #888;
   }
 `;
 const SettingsCaseStudyListHeader = styled(SettingsCaseStudyListItem)`
@@ -308,7 +297,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
               <SettingsCaseStudyListItem key={m.value}>
                 <div>{new Date(m.value).toLocaleString()}</div>
                 <div>
-                  <input
+                  <InputText
                     onBlur={(ev) => {
                       const nextColor = ev.target.value.trim();
                       if (nextColor !== '') {

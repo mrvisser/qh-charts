@@ -12,6 +12,7 @@ import { useObservable } from '../hooks/useObservable';
 import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
 import { ChartZoomable } from './ChartZoomable';
 import { Drawer } from './Drawer';
+import { InputText } from './InputText';
 import { StalkingButton, StalkingButtonGroup } from './StalkingButtonGroup';
 
 const nChartsPerPage = 3;
@@ -31,6 +32,12 @@ const SettingsSectionTitle = styled.h2`
   font-size: 18px;
   font-weight: 500;
   margin-bottom: 25px;
+`;
+
+const SettingsSectionSubTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 400;
+  margin-bottom: 15px;
 `;
 
 const DailyChartsContainer = styled.div`
@@ -115,6 +122,9 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
   const [dayFilter, setDayFilter] = React.useState<Range>();
   const [showSettings, setShowSettings] = React.useState(false);
 
+  const [overrideYMax, setOverrideYMax] = React.useState<number>();
+  const [overrideYMin, setOverrideYMin] = React.useState<number>();
+
   const [overallBloodGlucose] = useObservable(
     () =>
       metricsStore.bloodGlucose$.pipe(
@@ -186,10 +196,15 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
             max: m.endOf('day').toDate().getTime(),
             min: m.startOf('day').toDate().getTime(),
           };
-          const yMax = Math.min(Math.max(8, ...data.map((d) => d[1])), 12);
+          const yMax =
+            overrideYMax === undefined
+              ? Math.ceil(
+                  Math.min(Math.max(8, ...data.map((d) => d[1])), 12) * 2,
+                ) / 2
+              : overrideYMax;
           const yMinMax = {
             max: Math.ceil(yMax * 2) / 2,
-            min: 3,
+            min: overrideYMin === undefined ? 3 : overrideYMin,
           };
           return {
             hidden: false,
@@ -207,7 +222,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     } else {
       return undefined;
     }
-  }, [dailyBloodGlucose, dayFilter, timezone]);
+  }, [dailyBloodGlucose, dayFilter, overrideYMax, overrideYMin, timezone]);
 
   return (
     <>
@@ -293,31 +308,71 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
                   m.toDate(),
                 );
                 return (
-                  <DateRangePickerContainer>
-                    <DateRangePicker
-                      maxDate={maxDate}
-                      minDate={minDate}
-                      moveRangeOnFirstSelection={false}
-                      onChange={(range) => {
-                        if ('selection' in range) {
-                          setDayFilter(range.selection);
-                        }
-                      }}
-                      ranges={[
-                        dayFilter === undefined
-                          ? {
-                              endDate: maxDate,
-                              key: 'selection',
-                              startDate: minDate,
-                            }
-                          : dayFilter,
-                      ]}
-                      showSelectionPreview={true}
-                    />
-                  </DateRangePickerContainer>
+                  <>
+                    <SettingsSectionSubTitle>
+                      Selected Date Range:
+                    </SettingsSectionSubTitle>
+                    <DateRangePickerContainer>
+                      <DateRangePicker
+                        maxDate={maxDate}
+                        minDate={minDate}
+                        moveRangeOnFirstSelection={false}
+                        onChange={(range) => {
+                          if ('selection' in range) {
+                            setDayFilter(range.selection);
+                          }
+                        }}
+                        ranges={[
+                          dayFilter === undefined
+                            ? {
+                                endDate: maxDate,
+                                key: 'selection',
+                                startDate: minDate,
+                              }
+                            : dayFilter,
+                        ]}
+                        showSelectionPreview={true}
+                      />
+                    </DateRangePickerContainer>
+                  </>
                 );
               })()
             : undefined}
+          <SettingsSectionSubTitle>
+            Selected Glucose Range:
+          </SettingsSectionSubTitle>
+          <div>
+            <label>
+              Min:{' '}
+              <InputText
+                placeholder={
+                  overrideYMin !== undefined
+                    ? overrideYMin.toString()
+                    : 'Enter a minimum'
+                }
+                onBlur={(ev) => {
+                  const value = parseFloat(ev.target.value.trim());
+                  setOverrideYMin(isNaN(value) ? undefined : value);
+                }}
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              Max:{' '}
+              <InputText
+                placeholder={
+                  overrideYMax !== undefined
+                    ? overrideYMax.toString()
+                    : 'Enter a maximum'
+                }
+                onBlur={(ev) => {
+                  const value = parseFloat(ev.target.value.trim());
+                  setOverrideYMax(isNaN(value) ? undefined : value);
+                }}
+              />
+            </label>
+          </div>
         </SettingsSection>
       </SettingsPanel>
     </>
