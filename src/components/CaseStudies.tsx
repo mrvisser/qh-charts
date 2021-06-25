@@ -3,6 +3,7 @@ import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
 import moment from 'moment-timezone';
 import React from 'react';
+import { SketchPicker } from 'react-color';
 import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
@@ -83,11 +84,22 @@ const SettingsCaseStudyListHeader = styled(SettingsCaseStudyListItem)`
   }
 `;
 
-const SettingsCaseStudyColorPreview = styled.div`
+const SettingsCaseStudyColorPreview = styled.button`
   border: solid 1px #eee;
   border-radius: 5px;
-  height: 1.7em;
-  width: 1.7em;
+  cursor: pointer;
+  display: block;
+  height: 3em;
+  overflow: visible;
+  position: relative;
+  width: 3em;
+`;
+
+const SettingsCaseStudyColorEdit = styled.div`
+  background: none;
+  bottom: 0;
+  left: 4em;
+  position: absolute;
 `;
 
 const CaseStudyChartsContainer = styled.div`
@@ -165,6 +177,22 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
   const [charts, setCharts] = React.useState<
     { id: number; title: string; options: Highcharts.Options }[]
   >([]);
+
+  const [colorEditIndex, setColorEditIndex] = React.useState<number>();
+  const colorEditRef = React.createRef<HTMLDivElement>();
+
+  React.useEffect(() => {
+    const ref = colorEditRef.current;
+    if (ref !== null) {
+      const handle = (ev: MouseEvent) => {
+        if (ev.target === null || !ref.contains(ev.target as Node)) {
+          setColorEditIndex(undefined);
+        }
+      };
+      document.addEventListener('click', handle);
+      return () => document.removeEventListener('click', handle);
+    }
+  }, [colorEditRef]);
 
   React.useEffect(() => {
     if (markers.length === 0) {
@@ -295,9 +323,26 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                     placeholder={m.color}
                   />
                   <SettingsCaseStudyColorPreview
+                    onClick={() => setColorEditIndex(i0)}
                     style={{ backgroundColor: m.color }}
                   >
-                    {' '}
+                    {colorEditIndex === i0 ? (
+                      <SettingsCaseStudyColorEdit ref={colorEditRef}>
+                        <SketchPicker
+                          color={m.color}
+                          disableAlpha={true}
+                          onChangeComplete={(color) =>
+                            setMarkers((ms) =>
+                              ms.map((m, i1) =>
+                                i0 === i1 ? { ...m, color: color.hex } : m,
+                              ),
+                            )
+                          }
+                        />
+                      </SettingsCaseStudyColorEdit>
+                    ) : (
+                      ' '
+                    )}
                   </SettingsCaseStudyColorPreview>
                 </div>
                 <div>
