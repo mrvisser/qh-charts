@@ -1,25 +1,25 @@
 {
   "files": {
     "main.css": "/qh-charts/static/css/main.c189335b.chunk.css",
-    "main.js": "/qh-charts/static/js/main.89519a70.chunk.js",
-    "main.js.map": "/qh-charts/static/js/main.89519a70.chunk.js.map",
+    "main.js": "/qh-charts/static/js/main.874f5b64.chunk.js",
+    "main.js.map": "/qh-charts/static/js/main.874f5b64.chunk.js.map",
     "runtime-main.js": "/qh-charts/static/js/runtime-main.5768de54.js",
     "runtime-main.js.map": "/qh-charts/static/js/runtime-main.5768de54.js.map",
     "static/css/2.c2e18bb2.chunk.css": "/qh-charts/static/css/2.c2e18bb2.chunk.css",
-    "static/js/2.57dbb719.chunk.js": "/qh-charts/static/js/2.57dbb719.chunk.js",
-    "static/js/2.57dbb719.chunk.js.map": "/qh-charts/static/js/2.57dbb719.chunk.js.map",
+    "static/js/2.14230bd3.chunk.js": "/qh-charts/static/js/2.14230bd3.chunk.js",
+    "static/js/2.14230bd3.chunk.js.map": "/qh-charts/static/js/2.14230bd3.chunk.js.map",
     "static/js/3.4bdd791a.chunk.js": "/qh-charts/static/js/3.4bdd791a.chunk.js",
     "static/js/3.4bdd791a.chunk.js.map": "/qh-charts/static/js/3.4bdd791a.chunk.js.map",
     "index.html": "/qh-charts/index.html",
     "static/css/2.c2e18bb2.chunk.css.map": "/qh-charts/static/css/2.c2e18bb2.chunk.css.map",
     "static/css/main.c189335b.chunk.css.map": "/qh-charts/static/css/main.c189335b.chunk.css.map",
-    "static/js/2.57dbb719.chunk.js.LICENSE.txt": "/qh-charts/static/js/2.57dbb719.chunk.js.LICENSE.txt"
+    "static/js/2.14230bd3.chunk.js.LICENSE.txt": "/qh-charts/static/js/2.14230bd3.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.5768de54.js",
     "static/css/2.c2e18bb2.chunk.css",
-    "static/js/2.57dbb719.chunk.js",
+    "static/js/2.14230bd3.chunk.js",
     "static/css/main.c189335b.chunk.css",
-    "static/js/main.89519a70.chunk.js"
+    "static/js/main.874f5b64.chunk.js"
   ]
 }
