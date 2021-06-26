@@ -63,12 +63,19 @@ const SettingsCaseStudyListItem = styled.li`
   }
 
   & > div:nth-child(1) {
-    width: 225px;
+    width: 200px;
+  }
+
+  & > div:nth-child(2) {
+    width: 40px;
   }
 
   & > div:nth-child(3) {
     flex: 1;
-    justify-content: flex-end;
+  }
+
+  & > div:nth-child(3) > input {
+    width: 100%;
   }
 `;
 const SettingsCaseStudyListHeader = styled(SettingsCaseStudyListItem)`
@@ -154,9 +161,21 @@ const CaseStudyChartHeading = styled.h2`
   text-transform: uppercase;
 `;
 
+const CaseStudyChartSubHeading = styled.h3`
+  font-weight: 400;
+  margin: 5px 0 0 0;
+  text-align: center;
+  text-transform: uppercase;
+`;
+
 const CaseStudyChart = styled.div`
   flex: 1;
 `;
+
+type CaseStudyEntry = {
+  marker: ChartZoomablePropsMarker;
+  title?: string;
+};
 
 export const CaseStudies: React.FC<CaseStudiesProps> = ({
   onBack,
@@ -173,12 +192,17 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 
   const [showSettings, setShowSettings] = React.useState(false);
   const [hours, setHours] = React.useState(4);
-  const [markers, setMarkers] = React.useState<ChartZoomablePropsMarker[]>([]);
+  const [entries, setEntries] = React.useState<CaseStudyEntry[]>([]);
   const [overrideYMin, setOverrideYMin] = React.useState<number>();
   const [overrideYMax, setOverrideYMax] = React.useState<number>();
 
   const [charts, setCharts] = React.useState<
-    { id: number; title: string; options: Highcharts.Options }[]
+    {
+      id: number;
+      subTitle?: string;
+      title: string;
+      options: Highcharts.Options;
+    }[]
   >([]);
 
   const [colorEditIndex, setColorEditIndex] = React.useState<number>();
@@ -198,7 +222,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
   }, [colorEditRef]);
 
   React.useEffect(() => {
-    if (markers.length === 0) {
+    if (entries.length === 0) {
       setShowSettings(true);
     }
 
@@ -209,7 +233,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 
       // Build the data
       const dataByChartId: Record<number, [number, number][]> = {};
-      const ids = markers.map((m) => m.value).sort();
+      const ids = entries.map((e) => e.marker.value).sort();
       for (const i of ids) {
         dataByChartId[i] = [];
       }
@@ -227,9 +251,13 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       const comparisonChart = {
         id: 0,
         options: createHighchartsOptionsForCaseStudy(
-          markers.map((marker) => ({
-            color: marker.color,
-            data: dataByChartId[marker.value],
+          entries.map((entry) => ({
+            color: entry.marker.color,
+            data: dataByChartId[entry.marker.value],
+            title:
+              entry.title !== undefined
+                ? entry.title
+                : formatDateTimeShort(entry.marker.value, timezone),
           })),
           {
             max: durationMillis,
@@ -250,10 +278,16 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         title: 'Overall',
       };
 
-      const studyCharts = markers.map((marker) => ({
-        id: marker.value,
+      const studyCharts = entries.map((entry) => ({
+        id: entry.marker.value,
         options: createHighchartsOptionsForCaseStudy(
-          [{ color: marker.color, data: dataByChartId[marker.value] }],
+          [
+            {
+              color: entry.marker.color,
+              data: dataByChartId[entry.marker.value],
+              title: '',
+            },
+          ],
           {
             max: durationMillis,
             min: 0,
@@ -270,16 +304,15 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
           },
           true,
         ),
-        title: moment
-          .tz(new Date(marker.value), timezone)
-          .format('dddd, MMMM Do @ h:mm A'),
+        subTitle: entry.title,
+        title: formatDateTimeLong(entry.marker.value, timezone),
       }));
 
       setCharts([comparisonChart, ...studyCharts]);
     }
   }, [
     hours,
-    markers,
+    entries,
     overallBloodGlucose,
     overrideYMax,
     overrideYMin,
@@ -295,11 +328,16 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       {charts.length > 0 ? (
         <CaseStudyChartsContainer>
           <CaseStudyChartsHeading>Case Studies</CaseStudyChartsHeading>
-          {charts.map(({ id, options, title }) => {
+          {charts.map(({ id, options, subTitle, title }) => {
             return (
               <CaseStudyChartsPageGroup key={id}>
                 <CaseStudyChartContainer>
                   <CaseStudyChartHeading>{title}</CaseStudyChartHeading>
+                  {subTitle !== undefined ? (
+                    <CaseStudyChartSubHeading>
+                      {subTitle}
+                    </CaseStudyChartSubHeading>
+                  ) : undefined}
                   <CaseStudyChart>
                     <HighchartsReact id={`chart-${id}`} options={options} />
                   </CaseStudyChart>
@@ -318,13 +356,15 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
         <SettingsSection>
           <SettingsSectionTitle>Case Studies</SettingsSectionTitle>
           <ChartZoomable
-            markers={markers}
+            markers={entries.map((e) => e.marker)}
             onSelectTime={(value) =>
-              setMarkers((ms) =>
-                _.chain(ms)
-                  .concat({ color: 'red', value })
-                  .uniqBy((e) => e.value)
-                  .sortBy((e) => e.value)
+              setEntries((es) =>
+                _.chain(es)
+                  .concat({
+                    marker: { color: 'red', value },
+                  })
+                  .uniqBy((e) => e.marker.value)
+                  .sortBy((e) => e.marker.value)
                   .value(),
               )
             }
@@ -333,39 +373,31 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
           <SettingsCaseStudyList>
             <SettingsCaseStudyListHeader>
               <div>Date &amp; Time</div>
-              <div>Color</div>
+              <div> </div>
+              <div>Name</div>
             </SettingsCaseStudyListHeader>
-            {markers.map((m, i0) => (
-              <SettingsCaseStudyListItem key={m.value}>
-                <div>{new Date(m.value).toLocaleString()}</div>
+            {entries.map((entry, i0) => (
+              <SettingsCaseStudyListItem key={entry.marker.value}>
+                <div>{formatDateTimeShort(entry.marker.value, timezone)}</div>
                 <div>
-                  <InputText
-                    onBlur={(ev) => {
-                      const nextColor = ev.target.value.trim();
-                      if (nextColor !== '') {
-                        setMarkers((ms) =>
-                          ms.map((m, i1) =>
-                            i0 === i1 ? { ...m, color: nextColor } : m,
-                          ),
-                        );
-                      }
-                      ev.target.value = '';
-                    }}
-                    placeholder={m.color}
-                  />
                   <SettingsCaseStudyColorPreview
                     onClick={() => setColorEditIndex(i0)}
-                    style={{ backgroundColor: m.color }}
+                    style={{ backgroundColor: entry.marker.color }}
                   >
                     {colorEditIndex === i0 ? (
                       <SettingsCaseStudyColorEdit ref={colorEditRef}>
                         <SketchPicker
-                          color={m.color}
+                          color={entry.marker.color}
                           disableAlpha={true}
                           onChangeComplete={(color) =>
-                            setMarkers((ms) =>
-                              ms.map((m, i1) =>
-                                i0 === i1 ? { ...m, color: color.hex } : m,
+                            setEntries((es) =>
+                              es.map((e, i1) =>
+                                i0 === i1
+                                  ? {
+                                      ...e,
+                                      marker: { ...e.marker, color: color.hex },
+                                    }
+                                  : e,
                               ),
                             )
                           }
@@ -377,9 +409,29 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                   </SettingsCaseStudyColorPreview>
                 </div>
                 <div>
+                  <InputText
+                    onFocus={(ev) => {
+                      if (
+                        ev.target.value.trim() === '' &&
+                        entry.title !== undefined
+                      ) {
+                        ev.target.value = entry.title;
+                      }
+                    }}
+                    onBlur={(ev) => {
+                      const value = ev.target.value.trim();
+                      const title = value === '' ? undefined : value;
+                      setEntries((es) =>
+                        es.map((e, i1) => (i0 === i1 ? { ...e, title } : e)),
+                      );
+                    }}
+                    placeholder={entry.title}
+                  />
+                </div>
+                <div>
                   <IconButton
                     onClick={() =>
-                      setMarkers((ms) => ms.filter((_, i1) => i1 !== i0))
+                      setEntries((ms) => ms.filter((_, i1) => i1 !== i0))
                     }
                     path={mdiTrashCanOutline}
                   />
@@ -437,7 +489,11 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 };
 
 function createHighchartsOptionsForCaseStudy(
-  data: { color: string; data: [number, number][]; title?: string }[],
+  data: {
+    color: string;
+    data: [number, number][];
+    title: string;
+  }[],
   xMinMax: { min: number; max: number },
   yMinMax: {
     min: number;
@@ -460,6 +516,8 @@ function createHighchartsOptionsForCaseStudy(
           data[0].data.filter(([t]) => t > timeToPeak),
         )
       : undefined;
+
+  const hasLegend = data.length > 1;
 
   return {
     chart: {
@@ -501,7 +559,7 @@ function createHighchartsOptionsForCaseStudy(
               y: chartPaddingTop,
             });
 
-            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
+            const maxLabel = this.renderer.text('GLUCOSE PEAK:', 0).add();
             maxLabel.attr({
               ...attrs,
               x: labelX,
@@ -554,7 +612,7 @@ function createHighchartsOptionsForCaseStudy(
         },
       },
       height: 225,
-      margin: [15, 0, 30, 40],
+      margin: [15, 0, hasLegend ? 80 : 30, 40],
       style: {
         fontFamily: 'Poppins',
       },
@@ -565,7 +623,7 @@ function createHighchartsOptionsForCaseStudy(
       enabled: false,
     },
     legend: {
-      enabled: false,
+      enabled: hasLegend,
     },
     plotOptions: {
       series: {
@@ -577,7 +635,11 @@ function createHighchartsOptionsForCaseStudy(
         },
       },
     },
-    series: data.map(({ data }) => ({ data, name: 'mmol/L', type: 'spline' })),
+    series: data.map(({ data, title }) => ({
+      data,
+      name: title,
+      type: 'spline',
+    })),
     time: {
       moment,
       timezone: 'UTC',
@@ -645,4 +707,12 @@ function calculateTimeToBaseline(
     }
   }
   return -1;
+}
+
+function formatDateTimeLong(millis: number, timezone: string) {
+  return moment.tz(new Date(millis), timezone).format('dddd, MMMM Do @ h:mm A');
+}
+
+function formatDateTimeShort(millis: number, timezone: string) {
+  return moment.tz(new Date(millis), timezone).format('MMMM Do @ h:mm A');
 }

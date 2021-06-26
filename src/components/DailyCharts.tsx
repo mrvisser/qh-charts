@@ -535,7 +535,7 @@ function createHighchartsOptionsForDay(
               y: chartPaddingTop,
             });
 
-            const maxLabel = this.renderer.text('MAXIMUM GLUCOSE:', 0).add();
+            const maxLabel = this.renderer.text('GLUCOSE PEAK:', 0).add();
             maxLabel.attr({
               ...attrs,
               x: labelX,
