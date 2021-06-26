@@ -504,7 +504,6 @@ function createHighchartsOptionsForCaseStudy(
   const values = data.flatMap((p) => p.data).map((p) => p[1]);
   const chartMax = Math.max(...values);
 
-  const labels: Highcharts.SVGElement[] = [];
   const timeToPeak =
     includeLabels && data.length === 1
       ? calculateTimeToMax(data[0].data)
@@ -523,8 +522,14 @@ function createHighchartsOptionsForCaseStudy(
     chart: {
       events: {
         render() {
-          labels.forEach((l) => l.destroy());
-          labels.length = 0;
+          const ctx = this as unknown as {
+            _qhLabels?: Highcharts.SVGElement[];
+          };
+          const labels = ctx._qhLabels;
+          if (labels !== undefined) {
+            labels.forEach((l) => l.destroy());
+            delete ctx._qhLabels;
+          }
 
           if (timeToPeak !== undefined && timeToBaseline !== undefined) {
             const chartPaddingTop = 28.5;
@@ -600,14 +605,14 @@ function createHighchartsOptionsForCaseStudy(
               y: chartPaddingTop + lineHeight * 2,
             });
 
-            labels.push(
+            ctx._qhLabels = [
               ttpLabel,
               ttpValue,
               maxLabel,
               maxValue,
               ttbLabel,
               ttbValue,
-            );
+            ];
           }
         },
       },
