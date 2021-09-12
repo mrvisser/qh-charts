@@ -1,3 +1,4 @@
+import base64 from 'base64-js';
 import _ from 'lodash';
 import React from 'react';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -93,12 +94,7 @@ export class FileStore {
 }
 
 function base64EncodeBuffer(buf: ArrayBuffer): string {
-  return btoa(
-    new Uint8Array(buf).reduce(
-      (str, byte) => str + String.fromCharCode(byte),
-      '',
-    ),
-  );
+  return base64.fromByteArray(new Uint8Array(buf));
 }
 
 function resolveFileType(

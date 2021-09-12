@@ -1,3 +1,4 @@
+import base64 from 'base64-js';
 import csvParse from 'csv-parse';
 import moment from 'moment-timezone';
 import React from 'react';
@@ -49,13 +50,8 @@ export class MetricsStore {
             () => Promise.resolve(undefined),
             async () => {
               const csvs = files.map((file) => {
-                const data = atob(file.data);
-                const bytes = new Uint8Array(data.length);
-                for (let i = 0; i < data.length; i++) {
-                  bytes[i] = data.charCodeAt(i);
-                }
                 return new TextDecoder('utf-8')
-                  .decode(bytes)
+                  .decode(base64.toByteArray(file.data))
                   .replaceAll('\r\n', '\n');
               });
               const timeValuesArr: Record<string, number>[] = await Promise.all(
