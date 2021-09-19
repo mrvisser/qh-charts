@@ -20,15 +20,15 @@ plugins:
   - import
 rules:
   comma-dangle:
-    - error
+    - warn
     - always-multiline
   deprecation/deprecation:
-    - error
+    - warn
   import/no-unresolved:
     - error
     - commonjs: true
   import/order:
-    - error
+    - warn
     - alphabetize:
         order: asc
       groups:
@@ -38,14 +38,14 @@ rules:
           - parent
         - index
       newlines-between: always
-  no-console: error
-  react/self-closing-comp: error
+  no-console: warn
+  react/self-closing-comp: warn
   react-hooks/exhaustive-deps:
     - error
     - additionalHooks: useObservable
-  sort-keys-fix/sort-keys-fix: error
-  '@typescript-eslint/no-floating-promises': error
-  '@typescript-eslint/strict-boolean-expressions': error
+  sort-keys-fix/sort-keys-fix: warn
+  '@typescript-eslint/no-floating-promises': warn
+  '@typescript-eslint/strict-boolean-expressions': warn
   jest/lowercase-name:
     - error
     - ignore:

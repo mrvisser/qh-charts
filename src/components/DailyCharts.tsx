@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { mdiChevronLeft, mdiCog } from '@mdi/js';
 import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
@@ -9,7 +10,7 @@ import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
-import { MetricsStore, MetricsStoreContext } from '../services/MetricsStore';
+import { MetricsStoreContext } from '../services/MetricsStore';
 import { ChartZoomable } from './ChartZoomable';
 import { Drawer } from './Drawer';
 import { InputText } from './InputText';
@@ -107,9 +108,9 @@ const DailyChart = styled.div`
   flex: 1;
 `;
 
-type DayData = {
+type DayData<D = [number, number][]> = {
   day: string;
-  data: [number, number][];
+  data: D;
 };
 
 export type DailyChartsProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -129,30 +130,16 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
   const [overrideYMax, setOverrideYMax] = React.useState<number>();
   const [overrideYMin, setOverrideYMin] = React.useState<number>();
 
-  const [overallBloodGlucose] = useObservable(
+  const [bloodGlucose] = useObservable(
     () =>
       metricsStore.bloodGlucose$.pipe(
-        map(MetricsStore.metricValuesToHighchartsPairs),
+        map((ms) => ms?.map<[number, number]>((m) => [m.time, m.value])),
       ),
     [metricsStore],
   );
-  const [overallMinMaxTime, setOverallMinMaxTime] =
-    React.useState<[number, number]>();
-  const overallHighchartsOptions = React.useMemo(() => {
-    return overallBloodGlucose !== undefined
-      ? createHighchartsOptionsOverall(
-          timezone,
-          overallBloodGlucose,
-          overallMinMaxTime !== undefined
-            ? { max: overallMinMaxTime[1], min: overallMinMaxTime[0] }
-            : undefined,
-        )
-      : undefined;
-  }, [overallBloodGlucose, overallMinMaxTime, timezone]);
-
-  const dailyBloodGlucose = React.useMemo(() => {
-    if (overallBloodGlucose !== undefined) {
-      return _.chain(overallBloodGlucose)
+  const dailyBloodGlucose = React.useMemo<DayData[] | undefined>(() => {
+    if (bloodGlucose !== undefined) {
+      return _.chain(bloodGlucose)
         .groupBy(([time]) => moment(time).tz(timezone).format('YYYY-MM-DD'))
         .toPairs()
         .map(([day, data]) => ({ data, day }))
@@ -161,7 +148,75 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     } else {
       return undefined;
     }
-  }, [overallBloodGlucose, timezone]);
+  }, [bloodGlucose, timezone]);
+
+  const [overallMinMaxTime, setOverallMinMaxTime] =
+    React.useState<[number, number]>();
+  const overallFastingGlucose = React.useMemo<
+    DayData<number | null>[] | undefined
+  >(() => {
+    if (dailyBloodGlucose !== undefined) {
+      const [min, max] = overallMinMaxTime ?? [0, Date.now()];
+      const mMin = moment(min).tz(timezone);
+      const mMax = moment(max).tz(timezone);
+
+      return dailyBloodGlucose
+        .filter(({ day }) => {
+          const m = moment(day).tz(timezone);
+          const start = m.clone().startOf('day');
+          const end = m.clone().endOf('day');
+          return end.isSameOrAfter(mMin) && start.isSameOrBefore(mMax);
+        })
+        .map(({ data, day }) => {
+          // Get the data within the fasting range
+          const fastingTime = moment(day).tz(timezone).hour(4).startOf('hour');
+          const fastingTimeMillis = fastingTime.toDate().getTime();
+          const low = fastingTime.clone().subtract(15, 'minutes');
+          const high = fastingTime.clone().add(15, 'minutes');
+          const dataInRange = data.filter(([time]) => {
+            const m = moment(time).tz(timezone);
+            return m.isSameOrAfter(low) && m.isSameOrBefore(high);
+          });
+          const fastingGlucose = dataInRange.sort(
+            ([a], [b]) =>
+              Math.abs(a - fastingTimeMillis) - Math.abs(b - fastingTimeMillis),
+          )[0];
+          return {
+            data: fastingGlucose?.[1] ?? null,
+            day,
+          };
+        });
+    } else {
+      return undefined;
+    }
+  }, [dailyBloodGlucose, overallMinMaxTime, timezone]);
+  const overallHighchartsOptions = React.useMemo(() => {
+    return overallFastingGlucose !== undefined &&
+      overallFastingGlucose.length > 1
+      ? createHighchartsOptionsOverall(
+          timezone,
+          overallFastingGlucose.map(({ day, data }) => [
+            moment(day).tz(timezone).startOf('day').toDate().getTime(),
+            data,
+          ]),
+          {
+            max: moment(
+              overallFastingGlucose[overallFastingGlucose.length - 1].day,
+            )
+              .tz(timezone)
+              .startOf('day')
+              .toDate()
+              .getTime(),
+            min: moment(overallFastingGlucose[0].day)
+              .tz(timezone)
+              .startOf('day')
+              .toDate()
+              .getTime(),
+          },
+        )
+      : undefined;
+  }, [overallFastingGlucose, timezone]);
+
   const dailyMinMaxDay = React.useMemo(() => {
     if (dailyBloodGlucose !== undefined) {
       const nDays = dailyBloodGlucose.length;
@@ -235,7 +290,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
         <StalkingButton path={mdiCog} onClick={() => setShowSettings(true)} />
       </StalkingButtonGroup>
       <DailyChartsContainer {...divProps}>
-        <DailyChartsHeading>Overall</DailyChartsHeading>
+        <DailyChartsHeading>Trends</DailyChartsHeading>
         {overallHighchartsOptions !== undefined ? (
           <DailyChartsPageGroup key={`page-group-overall`}>
             <DailyChartContainer>
@@ -377,7 +432,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
 
 function createHighchartsOptionsOverall(
   timezone: string,
-  data: [number, number][],
+  data: [number, number | null][],
   xMinMax?: { min: number; max: number },
   onRangeChange?: (start: number, end: number) => void,
 ): Highcharts.Options {
@@ -386,7 +441,7 @@ function createHighchartsOptionsOverall(
     chart: {
       animation: false,
       height: 225,
-      margin: [15, 0, 60, 40],
+      margin: [15, 0, 100, 40],
       style: {
         fontFamily: 'Poppins',
       },
@@ -397,21 +452,19 @@ function createHighchartsOptionsOverall(
       enabled: false,
     },
     legend: {
-      enabled: false,
+      enabled: true,
     },
     plotOptions: {
       series: {
-        gapSize: 30 * 60 * 1000,
-        gapUnit: 'value',
         marker: {
-          enabled: false,
+          enabled: true,
         },
       },
     },
     series: [
       {
         data,
-        name: 'mmol/L',
+        name: 'Fasting 4AM (mmol/L)',
         type: 'spline',
       },
     ],
