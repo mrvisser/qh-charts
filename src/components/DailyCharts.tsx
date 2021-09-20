@@ -504,8 +504,8 @@ function createHighchartsOptionsOverall(
       plotBands: [
         {
           color: 'rgba(87, 220, 140, 0.2)',
-          from: 4.1,
-          to: 6,
+          from: 4.3,
+          to: 4.8,
         },
       ],
       tickInterval: 0.5,
