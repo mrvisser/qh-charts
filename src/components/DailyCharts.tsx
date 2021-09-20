@@ -41,7 +41,7 @@ const SettingsSectionSubTitle = styled.h3`
   margin-bottom: 15px;
 `;
 
-const SettingsGlucoseInput = styled(InputText)`
+const SettingsNumberInput = styled(InputText)`
   width: 50px;
 `;
 
@@ -150,13 +150,28 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     }
   }, [bloodGlucose, timezone]);
 
-  const [overallMinMaxTime, setOverallMinMaxTime] =
+  const [trendMinMaxTime, setTrendMinMaxTime] =
     React.useState<[number, number]>();
-  const overallFastingGlucose = React.useMemo<
+  const [trendFastingMinutesOfDay, setTrendFastingMinutesOfDay] =
+    React.useState<number | undefined>(240);
+  const trendFastingMinutesOfDayLabel = React.useMemo(
+    () =>
+      trendFastingMinutesOfDay !== undefined
+        ? moment()
+            .startOf('day')
+            .add(trendFastingMinutesOfDay, 'minutes')
+            .format('LT')
+        : '',
+    [trendFastingMinutesOfDay],
+  );
+  const trendFastingGlucose = React.useMemo<
     DayData<number | null>[] | undefined
   >(() => {
-    if (dailyBloodGlucose !== undefined) {
-      const [min, max] = overallMinMaxTime ?? [0, Date.now()];
+    if (
+      dailyBloodGlucose !== undefined &&
+      trendFastingMinutesOfDay !== undefined
+    ) {
+      const [min, max] = trendMinMaxTime ?? [0, Date.now()];
       const mMin = moment(min).tz(timezone);
       const mMax = moment(max).tz(timezone);
 
@@ -169,7 +184,10 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
         })
         .map(({ data, day }) => {
           // Get the data within the fasting range
-          const fastingTime = moment(day).tz(timezone).hour(4).startOf('hour');
+          const fastingTime = moment(day)
+            .tz(timezone)
+            .startOf('day')
+            .add(trendFastingMinutesOfDay, 'minutes');
           const fastingTimeMillis = fastingTime.toDate().getTime();
           const low = fastingTime.clone().subtract(15, 'minutes');
           const high = fastingTime.clone().add(15, 'minutes');
@@ -189,33 +207,37 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     } else {
       return undefined;
     }
-  }, [dailyBloodGlucose, overallMinMaxTime, timezone]);
-  const overallHighchartsOptions = React.useMemo(() => {
-    return overallFastingGlucose !== undefined &&
-      overallFastingGlucose.length > 1
-      ? createHighchartsOptionsOverall(
+  }, [dailyBloodGlucose, trendFastingMinutesOfDay, trendMinMaxTime, timezone]);
+  const trendHighchartsOptions = React.useMemo(() => {
+    return trendFastingGlucose !== undefined && trendFastingGlucose.length > 1
+      ? createHighchartsOptionsTrend(
           timezone,
-          overallFastingGlucose.map(({ day, data }) => [
+          trendFastingGlucose.map(({ day, data }) => [
             moment(day).tz(timezone).startOf('day').toDate().getTime(),
             data,
           ]),
           {
-            max: moment(
-              overallFastingGlucose[overallFastingGlucose.length - 1].day,
-            )
-              .tz(timezone)
-              .startOf('day')
-              .toDate()
-              .getTime(),
-            min: moment(overallFastingGlucose[0].day)
-              .tz(timezone)
-              .startOf('day')
-              .toDate()
-              .getTime(),
+            fasting: {
+              timeLabel: trendFastingMinutesOfDayLabel,
+            },
+            xMinMax: {
+              max: moment(
+                trendFastingGlucose[trendFastingGlucose.length - 1].day,
+              )
+                .tz(timezone)
+                .startOf('day')
+                .toDate()
+                .getTime(),
+              min: moment(trendFastingGlucose[0].day)
+                .tz(timezone)
+                .startOf('day')
+                .toDate()
+                .getTime(),
+            },
           },
         )
       : undefined;
-  }, [overallFastingGlucose, timezone]);
+  }, [trendFastingGlucose, trendFastingMinutesOfDayLabel, timezone]);
 
   const dailyMinMaxDay = React.useMemo(() => {
     if (dailyBloodGlucose !== undefined) {
@@ -291,13 +313,13 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
       </StalkingButtonGroup>
       <DailyChartsContainer {...divProps}>
         <DailyChartsHeading>Trends</DailyChartsHeading>
-        {overallHighchartsOptions !== undefined ? (
+        {trendHighchartsOptions !== undefined ? (
           <DailyChartsPageGroup key={`page-group-overall`}>
             <DailyChartContainer>
               <DailyChart>
                 <HighchartsReact
                   highcharts={Highcharts}
-                  options={{ ...overallHighchartsOptions }}
+                  options={{ ...trendHighchartsOptions }}
                 />
               </DailyChart>
             </DailyChartContainer>
@@ -352,12 +374,23 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
         title="Settings"
       >
         <SettingsSection>
-          <SettingsSectionTitle>Overall Chart Settings</SettingsSectionTitle>
+          <SettingsSectionTitle>Trend Chart Settings</SettingsSectionTitle>
           <ChartZoomable
             id="overall-range-filter"
-            onChangeRange={(start, end) => setOverallMinMaxTime([start, end])}
+            onChangeRange={(start, end) => setTrendMinMaxTime([start, end])}
             timezone={timezone}
           />
+          <label>
+            Fasting time (minutes from 12AM):{' '}
+            <SettingsNumberInput
+              defaultValue="240"
+              onBlur={(ev) => {
+                const value = parseFloat(ev.target.value.trim());
+                setTrendFastingMinutesOfDay(isNaN(value) ? undefined : value);
+              }}
+              placeholder={trendFastingMinutesOfDay?.toString() ?? ''}
+            />
+          </label>
         </SettingsSection>
         <SettingsSection>
           <SettingsSectionTitle>Daily Charts Settings</SettingsSectionTitle>
@@ -402,7 +435,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           </SettingsSectionSubTitle>
           <label>
             Min:{' '}
-            <SettingsGlucoseInput
+            <SettingsNumberInput
               onBlur={(ev) => {
                 const value = parseFloat(ev.target.value.trim());
                 setOverrideYMin(isNaN(value) ? undefined : value);
@@ -414,7 +447,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           </label>
           <label style={{ marginLeft: '15px' }}>
             Max:{' '}
-            <SettingsGlucoseInput
+            <SettingsNumberInput
               onBlur={(ev) => {
                 const value = parseFloat(ev.target.value.trim());
                 setOverrideYMax(isNaN(value) ? undefined : value);
@@ -430,11 +463,20 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
   );
 };
 
-function createHighchartsOptionsOverall(
+function createHighchartsOptionsTrend(
   timezone: string,
   data: [number, number | null][],
-  xMinMax?: { min: number; max: number },
-  onRangeChange?: (start: number, end: number) => void,
+  {
+    fasting,
+    onRangeChange,
+    xMinMax,
+  }: {
+    fasting: {
+      timeLabel: string;
+    };
+    onRangeChange?: (start: number, end: number) => void;
+    xMinMax: { min: number; max: number };
+  },
 ): Highcharts.Options {
   let rangeChangeTimeout: NodeJS.Timeout | undefined = undefined;
   return {
@@ -464,7 +506,7 @@ function createHighchartsOptionsOverall(
     series: [
       {
         data,
-        name: 'Fasting 4AM (mmol/L)',
+        name: `Fasting (${fasting.timeLabel}) (mmol/L)`,
         type: 'spline',
       },
     ],
