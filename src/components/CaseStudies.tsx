@@ -1,4 +1,5 @@
 import { mdiChevronLeft, mdiCog, mdiTrashCanOutline } from '@mdi/js';
+import * as Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import _ from 'lodash';
 import moment from 'moment-timezone';
@@ -339,7 +340,11 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                     </CaseStudyChartSubHeading>
                   ) : undefined}
                   <CaseStudyChart>
-                    <HighchartsReact id={`chart-${id}`} options={options} />
+                    <HighchartsReact
+                      highcharts={Highcharts}
+                      id={`chart-${id}`}
+                      options={options}
+                    />
                   </CaseStudyChart>
                 </CaseStudyChartContainer>
               </CaseStudyChartsPageGroup>
@@ -502,8 +507,14 @@ function createHighchartsOptionsForCaseStudy(
   includeLabels: boolean,
 ): Highcharts.Options {
   const values = data.flatMap((p) => p.data).map((p) => p[1]);
-  const chartMax = Math.max(...values);
 
+  const chartAvg =
+    values.length > 0
+      ? Math.round(
+          (values.reduce((sum, v) => sum + v, 0) * 10) / values.length,
+        ) / 10
+      : 'N/A';
+  const chartMax = Math.max(...values);
   const timeToPeak =
     includeLabels && data.length === 1
       ? calculateTimeToMax(data[0].data)
@@ -577,11 +588,24 @@ function createHighchartsOptionsForCaseStudy(
               y: chartPaddingTop + lineHeight,
             });
 
+            const avgLabel = this.renderer.text('AVERAGE GLUCOSE:', 0).add();
+            avgLabel.attr({
+              ...attrs,
+              x: labelX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+            const avgValue = this.renderer.text(`<b>${chartAvg}</b>`, 0).add();
+            avgValue.attr({
+              ...attrs,
+              x: valueX,
+              y: chartPaddingTop + lineHeight * 2,
+            });
+
             const ttbLabel = this.renderer.text('TIME TO BASELINE:', 0).add();
             ttbLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop + lineHeight * 2,
+              y: chartPaddingTop + lineHeight * 3,
             });
             const ttbValue = this.renderer
               .text(
@@ -602,7 +626,7 @@ function createHighchartsOptionsForCaseStudy(
             ttbValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop + lineHeight * 2,
+              y: chartPaddingTop + lineHeight * 3,
             });
 
             ctx._qhLabels = [
@@ -610,6 +634,8 @@ function createHighchartsOptionsForCaseStudy(
               ttpValue,
               maxLabel,
               maxValue,
+              avgLabel,
+              avgValue,
               ttbLabel,
               ttbValue,
             ];

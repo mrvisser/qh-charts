@@ -29,6 +29,10 @@ const GlobalStyle = createGlobalStyle`
   }
 
   @media print {
+    .highcharts-data-table {
+      display: none !important;
+    }
+
     .no-print {
       display: none !important;
     }
