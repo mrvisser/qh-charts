@@ -423,7 +423,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
                               }
                             : dayFilter,
                         ]}
-                        showSelectionPreview={true}
+                        showPreview
                       />
                     </DateRangePickerContainer>
                   </>
@@ -492,6 +492,17 @@ function createHighchartsOptionsTrend(
     colors: ['rgba(255, 102, 102, 1)'],
     credits: {
       enabled: false,
+    },
+    exporting: {
+      buttons: {
+        contextButton: {
+          className: 'no-print',
+          enabled: true,
+        },
+      },
+      csv: {
+        dateFormat: '%Y-%m-%d',
+      },
     },
     legend: {
       enabled: true,
@@ -702,6 +713,13 @@ function createHighchartsOptionsForDay(
     colors: ['rgba(255, 102, 102, 1)'],
     credits: {
       enabled: false,
+    },
+    exporting: {
+      buttons: {
+        contextButton: {
+          enabled: false,
+        },
+      },
     },
     legend: {
       enabled: false,

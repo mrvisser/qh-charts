@@ -28,21 +28,9 @@ const GlobalStyle = createGlobalStyle`
     font-family: 'Poppins', 'Roboto', 'Helvetica Neue', sans-serif;
   }
 
-  #charts-for-print {
-    display: none;
-  }
-
   @media print {
-    #charts-for-print {
-      display: block;
-    }
-
-    #charts-without-print {
-      display: none;
-    }
-
-    button.print {
-      display: none;
+    .no-print {
+      display: none !important;
     }
   }
 `;
