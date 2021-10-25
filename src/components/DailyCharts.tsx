@@ -489,7 +489,7 @@ function createHighchartsOptionsTrend(
       },
       type: 'spline',
     },
-    colors: ['rgba(255, 102, 102, 1)'],
+    colors: ['rgba(65, 165, 105, 1)'],
     credits: {
       enabled: false,
     },
@@ -512,6 +512,15 @@ function createHighchartsOptionsTrend(
         marker: {
           enabled: true,
         },
+        zones: [
+          {
+            color: 'rgba(65, 165, 105, 1)',
+            value: 4.8,
+          },
+          {
+            color: 'orange',
+          },
+        ],
       },
     },
     series: [
@@ -554,13 +563,6 @@ function createHighchartsOptionsTrend(
       type: 'datetime',
     },
     yAxis: {
-      plotBands: [
-        {
-          color: 'rgba(87, 220, 140, 0.2)',
-          from: 4.3,
-          to: 4.8,
-        },
-      ],
       tickInterval: 0.5,
       title: {
         text: '',
