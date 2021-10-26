@@ -712,7 +712,7 @@ function createHighchartsOptionsForDay(
       },
       type: 'spline',
     },
-    colors: ['rgba(255, 102, 102, 1)'],
+    // colors: ['rgba(255, 102, 102, 1)'],
     credits: {
       enabled: false,
     },
@@ -734,6 +734,23 @@ function createHighchartsOptionsForDay(
           enabled: true,
           radius: 2,
         },
+        zones: [
+          {
+            color: '#CCC',
+            value: 4.1,
+          },
+          {
+            color: 'rgba(65, 165, 105, 1)',
+            value: 6.1,
+          },
+          {
+            color: 'orange',
+            value: 7.8,
+          },
+          {
+            color: 'rgba(255, 102, 102, 1)',
+          },
+        ],
       },
     },
     series: [
