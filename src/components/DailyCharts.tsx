@@ -712,7 +712,6 @@ function createHighchartsOptionsForDay(
       },
       type: 'spline',
     },
-    // colors: ['rgba(255, 102, 102, 1)'],
     credits: {
       enabled: false,
     },
