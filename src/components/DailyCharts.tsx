@@ -619,9 +619,7 @@ function createHighchartsOptionsForDay(
   const dayMax = Math.max(...values);
   const dayAvg =
     values.length > 0
-      ? truncateNumber(
-          (values.reduce((acc, v) => acc + v, 0) * 10) / values.length,
-        )
+      ? truncateNumber(values.reduce((acc, v) => acc + v, 0) / values.length)
       : undefined;
   const dayMin = Math.min(...values);
 
