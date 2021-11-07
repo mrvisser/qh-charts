@@ -15,7 +15,11 @@ import { InputText } from './InputText';
 import { StalkingButton, StalkingButtonGroup } from './StalkingButtonGroup';
 
 import { useObservable } from 'src/hooks/useObservable';
-import { MetricsStore, MetricsStoreContext } from 'src/services/MetricsStore';
+import {
+  MetricsStore,
+  MetricsStoreContext,
+  UnitConfig,
+} from 'src/services/MetricsStore';
 
 export type CaseStudiesProps = {
   onBack: () => void;
@@ -190,6 +194,19 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
       ),
     [metricsStore],
   );
+  const [locale] = useObservable(() => metricsStore.locale$, [metricsStore]);
+  const unitConfig = React.useMemo<UnitConfig>(() => {
+    switch (locale) {
+      case undefined:
+      case 'ca':
+        return { fromMmolL: (n) => n, label: 'mmol/L' };
+      case 'us':
+        return {
+          fromMmolL: (n) => Math.round(n * 18.018018018),
+          label: 'mg/dL',
+        };
+    }
+  }, [locale]);
 
   const [showSettings, setShowSettings] = React.useState(false);
   const [hours, setHours] = React.useState(4);
@@ -229,8 +246,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
 
     if (overallBloodGlucose !== undefined) {
       const durationMillis = hours * 60 * 60 * 1000;
-      let yMinValue = 3;
-      let yMaxValue = 8;
+      let yMinValue = unitConfig.fromMmolL(3);
+      let yMaxValue = unitConfig.fromMmolL(8);
 
       // Build the data
       const dataByChartId: Record<number, [number, number][]> = {};
@@ -260,6 +277,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 ? entry.title
                 : formatDateTimeShort(entry.marker.value, timezone),
           })),
+          unitConfig,
           {
             max: durationMillis,
             min: 0,
@@ -289,6 +307,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
               title: '',
             },
           ],
+          unitConfig,
           {
             max: durationMillis,
             min: 0,
@@ -318,6 +337,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
     overrideYMax,
     overrideYMin,
     timezone,
+    unitConfig,
   ]);
 
   return (
@@ -499,6 +519,7 @@ function createHighchartsOptionsForCaseStudy(
     data: [number, number][];
     title: string;
   }[],
+  unitConfig: UnitConfig,
   xMinMax: { min: number; max: number },
   yMinMax: {
     min: number;
@@ -690,8 +711,8 @@ function createHighchartsOptionsForCaseStudy(
       plotBands: [
         {
           color: 'rgba(87, 220, 140, 0.2)',
-          from: 4.1,
-          to: 6,
+          from: unitConfig.fromMmolL(4.1),
+          to: unitConfig.fromMmolL(6),
         },
       ],
       plotLines: _.compact([
@@ -707,12 +728,12 @@ function createHighchartsOptionsForCaseStudy(
         {
           color: 'rgba(65, 165, 105, 1)',
           dashStyle: 'Dash',
-          value: 5,
+          value: unitConfig.fromMmolL(5),
           width: 4,
           zIndex: 2,
         },
       ]),
-      tickInterval: 0.5,
+      tickInterval: unitConfig.fromMmolL(0.5),
       title: {
         text: '',
       },

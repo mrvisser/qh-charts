@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
 import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
-import { MetricsStoreContext } from '../services/MetricsStore';
+import { MetricsStoreContext, UnitConfig } from '../services/MetricsStore';
 import { ChartZoomable } from './ChartZoomable';
 import { Drawer } from './Drawer';
 import { InputText } from './InputText';
@@ -130,6 +130,20 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
   const [overrideYMax, setOverrideYMax] = React.useState<number>();
   const [overrideYMin, setOverrideYMin] = React.useState<number>();
 
+  const [locale] = useObservable(() => metricsStore.locale$, [metricsStore]);
+  const unitConfig = React.useMemo<UnitConfig>(() => {
+    switch (locale) {
+      case undefined:
+      case 'ca':
+        return { fromMmolL: (n) => n, label: 'mmol/L' };
+      case 'us':
+        return {
+          fromMmolL: (n) => Math.round(n * 18.018018018),
+          label: 'mg/dL',
+        };
+    }
+  }, [locale]);
+
   const [bloodGlucose] = useObservable(
     () =>
       metricsStore.bloodGlucose$.pipe(
@@ -216,6 +230,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
             moment(day).tz(timezone).startOf('day').toDate().getTime(),
             data,
           ]),
+          unitConfig,
           {
             fasting: {
               timeLabel: trendFastingMinutesOfDayLabel,
@@ -237,7 +252,12 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           },
         )
       : undefined;
-  }, [trendFastingGlucose, trendFastingMinutesOfDayLabel, timezone]);
+  }, [
+    trendFastingGlucose,
+    trendFastingMinutesOfDayLabel,
+    timezone,
+    unitConfig,
+  ]);
 
   const dailyMinMaxDay = React.useMemo(() => {
     if (dailyBloodGlucose !== undefined) {
@@ -280,18 +300,24 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
           const yMax =
             overrideYMax === undefined
               ? Math.ceil(
-                  Math.min(Math.max(8, ...data.map((d) => d[1])), 12) * 2,
+                  Math.min(
+                    Math.max(unitConfig.fromMmolL(8), ...data.map((d) => d[1])),
+                    unitConfig.fromMmolL(12),
+                  ) * 2,
                 ) / 2
-              : overrideYMax;
+              : unitConfig.fromMmolL(overrideYMax);
           const yMinMax = {
             max: Math.ceil(yMax * 2) / 2,
-            min: overrideYMin === undefined ? 3 : overrideYMin,
+            min: unitConfig.fromMmolL(
+              overrideYMin === undefined ? 3 : overrideYMin,
+            ),
           };
           return {
             hidden: false,
             options: createHighchartsOptionsForDay(
               timezone,
               data,
+              unitConfig,
               xMinMax,
               yMinMax,
             ),
@@ -303,7 +329,14 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
     } else {
       return undefined;
     }
-  }, [dailyBloodGlucose, dayFilter, overrideYMax, overrideYMin, timezone]);
+  }, [
+    dailyBloodGlucose,
+    dayFilter,
+    overrideYMax,
+    overrideYMin,
+    timezone,
+    unitConfig,
+  ]);
 
   return (
     <>
@@ -466,6 +499,7 @@ export const DailyCharts: React.FC<DailyChartsProps> = ({
 function createHighchartsOptionsTrend(
   timezone: string,
   data: [number, number | null][],
+  unitConfig: UnitConfig,
   {
     fasting,
     onRangeChange,
@@ -515,7 +549,7 @@ function createHighchartsOptionsTrend(
         zones: [
           {
             color: 'rgba(65, 165, 105, 1)',
-            value: 4.8,
+            value: unitConfig.fromMmolL(4.8),
           },
           {
             color: 'orange',
@@ -526,7 +560,7 @@ function createHighchartsOptionsTrend(
     series: [
       {
         data,
-        name: `Fasting (${fasting.timeLabel}) (mmol/L)`,
+        name: `Fasting (${fasting.timeLabel}) (${unitConfig.label})`,
         type: 'spline',
       },
     ],
@@ -563,7 +597,7 @@ function createHighchartsOptionsTrend(
       type: 'datetime',
     },
     yAxis: {
-      tickInterval: 0.5,
+      tickInterval: unitConfig.fromMmolL(0.5),
       title: {
         text: '',
       },
@@ -574,6 +608,7 @@ function createHighchartsOptionsTrend(
 function createHighchartsOptionsForDay(
   timezone: string,
   data: [number, number][],
+  unitConfig: UnitConfig,
   xMinMax: { min: number; max: number },
   yMinMax: {
     min: number;
@@ -584,17 +619,20 @@ function createHighchartsOptionsForDay(
   const dayMax = Math.max(...values);
   const dayAvg =
     values.length > 0
-      ? Math.round(
+      ? truncateNumber(
           (values.reduce((acc, v) => acc + v, 0) * 10) / values.length,
-        ) / 10
+        )
       : undefined;
   const dayMin = Math.min(...values);
 
+  const lower = truncateNumber(unitConfig.fromMmolL(aboveThresholdTarget));
+  const upper = truncateNumber(unitConfig.fromMmolL(belowThresholdTarget));
+
   const { timeInRange: timeExposed } = calculateTimeInRange(data, {
-    lower: aboveThresholdTarget,
+    lower: unitConfig.fromMmolL(aboveThresholdTarget),
   });
   const { effectiveDuration, timeInRange } = calculateTimeInRange(data, {
-    upper: belowThresholdTarget,
+    upper: unitConfig.fromMmolL(belowThresholdTarget),
   });
   const timeInRangePct =
     effectiveDuration > 0 ? timeInRange / effectiveDuration : 1;
@@ -620,7 +658,7 @@ function createHighchartsOptionsForDay(
 
           if (dayAvg !== undefined && dayMax !== undefined) {
             const tirLabel = this.renderer
-              .text(`TIME IN RANGE (< ${belowThresholdTarget}):`, 0)
+              .text(`TIME IN RANGE (< ${upper}):`, 0)
               .add();
             tirLabel.attr({
               ...attrs,
@@ -670,7 +708,7 @@ function createHighchartsOptionsForDay(
             });
 
             const teLabel = this.renderer
-              .text(`TIME EXPOSED (> ${aboveThresholdTarget}):`, 0)
+              .text(`TIME EXPOSED (> ${lower}):`, 0)
               .add();
             teLabel.attr({
               ...attrs,
@@ -736,15 +774,15 @@ function createHighchartsOptionsForDay(
         zones: [
           {
             color: '#CCC',
-            value: 4.1,
+            value: unitConfig.fromMmolL(4.1),
           },
           {
             color: 'rgba(65, 165, 105, 1)',
-            value: 6.1,
+            value: unitConfig.fromMmolL(6.1),
           },
           {
             color: 'orange',
-            value: 7.8,
+            value: unitConfig.fromMmolL(7.8),
           },
           {
             color: 'rgba(255, 102, 102, 1)',
@@ -755,7 +793,7 @@ function createHighchartsOptionsForDay(
     series: [
       {
         data,
-        name: 'mmol/L',
+        name: unitConfig.label,
         type: 'spline',
       },
     ],
@@ -778,8 +816,8 @@ function createHighchartsOptionsForDay(
       plotBands: [
         {
           color: 'rgba(87, 220, 140, 0.2)',
-          from: 4.1,
-          to: 6,
+          from: unitConfig.fromMmolL(4.1),
+          to: unitConfig.fromMmolL(6),
         },
       ],
       plotLines: _.compact([
@@ -809,7 +847,7 @@ function createHighchartsOptionsForDay(
             }
           : undefined,
       ]),
-      tickInterval: 0.5,
+      tickInterval: unitConfig.fromMmolL(0.5),
       title: {
         text: '',
       },
@@ -863,4 +901,9 @@ function calculateTimeInRange(
     },
     { effectiveDuration: 0, timeInRange: 0 },
   );
+}
+
+function truncateNumber(n: number, maxDecimalPoints = 1) {
+  const mult = 10 * maxDecimalPoints;
+  return Math.floor(n * mult) / mult;
 }
