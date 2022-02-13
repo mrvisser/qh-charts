@@ -20,6 +20,7 @@ export type UnitConfig = {
 };
 
 type CsvRecord = {
+  'Serial Number': string;
   'Device Timestamp': string;
   'Record Type': string;
   'Historic Glucose mg/dL'?: string;
@@ -30,6 +31,23 @@ type CsvRecord = {
 export const MetricsStoreContext = React.createContext<MetricsStore>(
   undefined as unknown as MetricsStore,
 );
+
+// There are some devices that were off by 1 mmol. Adjust them up by 1
+const transforms: Record<string, { from: string, adjust: number }> = {
+  
+  // Branden test
+  '450E34A9-73C7-43EE-83ED-8D97C25F0B45': {
+    adjust: 4,
+    from: '24-03-2021 10:01',
+  },
+  
+  // Larlkyn
+  'B611D004-D7F2-43E0-9D8D-A9C5C0DEBA5A': {
+    adjust: 1,
+    // In "customer locale" and "customer timezone"
+    from: '08-01-2022 00:12',
+  },
+}
 
 export class MetricsStore {
   public static metricValuesToHighchartsPairs = <T>(
@@ -68,21 +86,31 @@ export class MetricsStore {
                   .replaceAll('\r\n', '\n');
               });
               const timeValuesArr: {
+                customerId: string;
                 data: Record<string, number>;
                 locale: CsvLocale;
               }[] = await Promise.all(csvs.map(parseBloodGlucoseCsv));
 
-              const locale = timeValuesArr[0].locale;
+              const { customerId, locale } = timeValuesArr[0];
               this.customerDataLocale$$.next(locale);
 
               const timeValues = timeValuesArr.reduce(
                 (acc, m) => ({ ...acc, ...m.data }),
                 {} as Record<string, number>,
               );
+
+              // Adjust for bogus machines
+              const transformData = transforms[customerId]
+              const transformFrom = transformData !== undefined
+                ? parseTime(locale, transformData.from, customerDataTimeZone)
+                : undefined
+              const transform = transformFrom !== undefined
+                ? (time: number, value: number) => time >= transformFrom ? value + transformData.adjust : value
+                : (_: number, value: number) => value
               return Object.keys(timeValues)
                 .map((timeStr) => {
-                  const value = timeValues[timeStr];
                   const time = parseTime(locale, timeStr, customerDataTimeZone);
+                  const value = transform(time, timeValues[timeStr]);
                   return { time, value };
                 })
                 .sort((a, b) => a.time - b.time);
@@ -95,7 +123,7 @@ export class MetricsStore {
 
 function parseBloodGlucoseCsv(
   input: string,
-): Promise<{ locale: CsvLocale; data: Record<string, number> }> {
+): Promise<{ customerId: string; locale: CsvLocale; data: Record<string, number> }> {
   return new Promise((accept, reject) => {
     const rows = input.split('\n').slice(1).join('\n');
     csvParse(rows, { columns: true }, (err, records: CsvRecord[]) => {
@@ -112,7 +140,7 @@ function parseBloodGlucoseCsv(
         }
       }
 
-      accept({ data, locale });
+      accept({ customerId: records[0]['Serial Number'], data, locale });
     });
   });
 }
@@ -145,6 +173,7 @@ function parseValue(locale: CsvLocale, record: CsvRecord): number | undefined {
 
   return !isNaN(value) ? value : undefined;
 }
+
 
 function resolveLocale([row]: CsvRecord[]): CsvLocale {
   if (row !== undefined && 'Historic Glucose mg/dL' in row) {
