@@ -43,7 +43,7 @@ const transforms: Record<string, { from: string, adjust: number }> = {
   
   // Larlkyn
   'B611D004-D7F2-43E0-9D8D-A9C5C0DEBA5A': {
-    adjust: 1,
+    adjust: -1,
     // In "customer locale" and "customer timezone"
     from: '08-01-2022 00:12',
   },
