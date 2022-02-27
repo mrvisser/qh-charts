@@ -33,21 +33,24 @@ export const MetricsStoreContext = React.createContext<MetricsStore>(
 );
 
 // There are some devices that were off by 1 mmol. Adjust them up by 1
-const transforms: Record<string, { from: string, adjust: number }> = {
-  
+const transforms: Record<
+  string,
+  { adjust: number; from: string; until?: string }
+> = {
   // Branden test
   '450E34A9-73C7-43EE-83ED-8D97C25F0B45': {
     adjust: 4,
-    from: '24-03-2021 10:01',
+    from: '23-03-2021 10:01',
+    until: '24-03-2021 00:00',
   },
-  
+
   // Larlkyn
   'B611D004-D7F2-43E0-9D8D-A9C5C0DEBA5A': {
     adjust: -1,
-    // In "customer locale" and "customer timezone"
     from: '08-01-2022 00:12',
+    until: '14-02-2021 00:00',
   },
-}
+};
 
 export class MetricsStore {
   public static metricValuesToHighchartsPairs = <T>(
@@ -100,13 +103,23 @@ export class MetricsStore {
               );
 
               // Adjust for bogus machines
-              const transformData = transforms[customerId]
-              const transformFrom = transformData !== undefined
-                ? parseTime(locale, transformData.from, customerDataTimeZone)
-                : undefined
-              const transform = transformFrom !== undefined
-                ? (time: number, value: number) => time >= transformFrom ? value + transformData.adjust : value
-                : (_: number, value: number) => value
+              const transformData = transforms[customerId];
+              const transformFrom =
+                transformData !== undefined
+                  ? parseTime(locale, transformData.from, customerDataTimeZone)
+                  : undefined;
+              const transformUntil =
+                transformData?.until !== undefined
+                  ? parseTime(locale, transformData.until, customerDataTimeZone)
+                  : undefined;
+              const transform =
+                transformFrom !== undefined
+                  ? (time: number, value: number) =>
+                      time >= transformFrom &&
+                      (transformUntil === undefined || time < transformUntil)
+                        ? value + transformData.adjust
+                        : value
+                  : (_: number, value: number) => value;
               return Object.keys(timeValues)
                 .map((timeStr) => {
                   const time = parseTime(locale, timeStr, customerDataTimeZone);
@@ -121,9 +134,11 @@ export class MetricsStore {
       .pipe(concatMap((fn) => fn()));
 }
 
-function parseBloodGlucoseCsv(
-  input: string,
-): Promise<{ customerId: string; locale: CsvLocale; data: Record<string, number> }> {
+function parseBloodGlucoseCsv(input: string): Promise<{
+  customerId: string;
+  locale: CsvLocale;
+  data: Record<string, number>;
+}> {
   return new Promise((accept, reject) => {
     const rows = input.split('\n').slice(1).join('\n');
     csvParse(rows, { columns: true }, (err, records: CsvRecord[]) => {
@@ -173,7 +188,6 @@ function parseValue(locale: CsvLocale, record: CsvRecord): number | undefined {
 
   return !isNaN(value) ? value : undefined;
 }
-
 
 function resolveLocale([row]: CsvRecord[]): CsvLocale {
   if (row !== undefined && 'Historic Glucose mg/dL' in row) {
