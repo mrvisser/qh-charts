@@ -619,12 +619,12 @@ function createHighchartsOptionsForDay(
   const dayMax = Math.max(...values);
   const dayAvg =
     values.length > 0
-      ? truncateNumber(values.reduce((acc, v) => acc + v, 0) / values.length)
+      ? values.reduce((acc, v) => acc + v, 0) / values.length
       : undefined;
   const dayMin = Math.min(...values);
 
-  const lower = truncateNumber(unitConfig.fromMmolL(aboveThresholdTarget));
-  const upper = truncateNumber(unitConfig.fromMmolL(belowThresholdTarget));
+  const lower = unitConfig.fromMmolL(aboveThresholdTarget);
+  const upper = unitConfig.fromMmolL(belowThresholdTarget);
 
   const { timeInRange: timeExposed } = calculateTimeInRange(data, {
     lower: unitConfig.fromMmolL(aboveThresholdTarget),
@@ -656,7 +656,7 @@ function createHighchartsOptionsForDay(
 
           if (dayAvg !== undefined && dayMax !== undefined) {
             const tirLabel = this.renderer
-              .text(`TIME IN RANGE (< ${upper}):`, 0)
+              .text(`TIME IN RANGE (< ${upper.toFixed(1)}):`, 0)
               .add();
             tirLabel.attr({
               ...attrs,
@@ -685,7 +685,9 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight,
             });
-            const maxValue = this.renderer.text(`<b>${dayMax}</b>`, 0).add();
+            const maxValue = this.renderer
+              .text(`<b>${dayMax.toFixed(1)}</b>`, 0)
+              .add();
             maxValue.attr({
               ...attrs,
               x: valueX,
@@ -698,7 +700,9 @@ function createHighchartsOptionsForDay(
               x: labelX,
               y: chartPaddingTop + lineHeight * 2,
             });
-            const avgValue = this.renderer.text(`<b>${dayAvg}</b>`, 0).add();
+            const avgValue = this.renderer
+              .text(`<b>${dayAvg.toFixed(1)}</b>`, 0)
+              .add();
             avgValue.attr({
               ...attrs,
               x: valueX,
@@ -706,7 +710,7 @@ function createHighchartsOptionsForDay(
             });
 
             const teLabel = this.renderer
-              .text(`TIME EXPOSED (> ${lower}):`, 0)
+              .text(`TIME EXPOSED (> ${lower.toFixed(1)}):`, 0)
               .add();
             teLabel.attr({
               ...attrs,
@@ -899,9 +903,4 @@ function calculateTimeInRange(
     },
     { effectiveDuration: 0, timeInRange: 0 },
   );
-}
-
-function truncateNumber(n: number, maxDecimalPoints = 1) {
-  const mult = 10 * maxDecimalPoints;
-  return Math.floor(n * mult) / mult;
 }

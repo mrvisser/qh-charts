@@ -293,6 +293,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 : overrideYMin,
           },
           false,
+          overallBloodGlucose ?? [],
+          0,
         ),
         title: 'Overall',
       };
@@ -323,6 +325,8 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 : overrideYMin,
           },
           true,
+          overallBloodGlucose ?? [],
+          entry.marker.value,
         ),
         subTitle: entry.title,
         title: formatDateTimeLong(entry.marker.value, timezone),
@@ -526,27 +530,37 @@ function createHighchartsOptionsForCaseStudy(
     max: number;
   },
   includeLabels: boolean,
+  overallGlucose: [number, number][],
+  timeOffset: number,
 ): Highcharts.Options {
   const values = data.flatMap((p) => p.data).map((p) => p[1]);
 
   const chartAvg =
     values.length > 0
-      ? Math.round(
-          (values.reduce((sum, v) => sum + v, 0) * 10) / values.length,
-        ) / 10
-      : 'N/A';
-  const chartMax = Math.max(...values);
-  const timeToPeak =
-    includeLabels && data.length === 1
-      ? calculateTimeToMax(data[0].data)
-      : undefined;
-  const timeToBaseline =
-    timeToPeak !== undefined
-      ? calculateTimeToBaseline(
-          data[0].data[0][1] * 1.2,
-          data[0].data.filter(([t]) => t > timeToPeak),
+      ? ((values.reduce((sum, v) => sum + v, 0) * 10) / values.length).toFixed(
+          1,
         )
-      : undefined;
+      : 'N/A';
+  const [chartMaxTime, chartMaxValue] = data
+    .flatMap((p) => p.data)
+    .reduce((acc, curr) => (curr[1] > acc[1] ? curr : acc), [0, 0]);
+  const chartMaxTimeAbs = timeOffset + chartMaxTime;
+
+  // Baseline value is one hour before glucose peak time
+  const baselineTime = chartMaxTimeAbs - 60 * 60 * 1000;
+  let baselineValue: number | undefined;
+  if (includeLabels) {
+    for (let i = 0; i < overallGlucose.length; i++) {
+      const [beforeTime, beforeValue] = overallGlucose[i];
+      const [afterTime] = overallGlucose[i + 1] ?? [0];
+      if (beforeTime <= baselineTime && afterTime > baselineTime) {
+        baselineValue = beforeValue;
+        break;
+      } else if (beforeTime > baselineTime) {
+        break;
+      }
+    }
+  }
 
   const hasLegend = data.length > 1;
 
@@ -563,7 +577,7 @@ function createHighchartsOptionsForCaseStudy(
             delete ctx._qhLabels;
           }
 
-          if (timeToPeak !== undefined && timeToBaseline !== undefined) {
+          if (includeLabels) {
             const chartPaddingTop = 28.5;
             const lineHeight = 18.5;
             const labelX = 45;
@@ -574,91 +588,56 @@ function createHighchartsOptionsForCaseStudy(
               zIndex: 1,
             };
 
-            const ttpLabel = this.renderer.text(`TIME TO PEAK:`, 0).add();
-            ttpLabel.attr({
-              ...attrs,
-              x: labelX,
-              y: chartPaddingTop,
-            });
-            const ttpValue = this.renderer
-              .text(
-                `<b>${moment
-                  .duration(timeToPeak, 'milliseconds')
-                  .format(() =>
-                    timeToPeak > 60 * 60 * 1000 ? 'h[h] m[m]' : 'm[m]',
-                  )}</b>`,
-                0,
-              )
-              .add();
-            ttpValue.attr({
-              ...attrs,
-              x: valueX,
-              y: chartPaddingTop,
-            });
-
             const maxLabel = this.renderer.text('GLUCOSE PEAK:', 0).add();
             maxLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop + lineHeight,
+              y: chartPaddingTop,
             });
-            const maxValue = this.renderer.text(`<b>${chartMax}</b>`, 0).add();
+            const maxValue = this.renderer
+              .text(`<b>${chartMaxValue}</b>`, 0)
+              .add();
             maxValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop + lineHeight,
+              y: chartPaddingTop,
             });
 
             const avgLabel = this.renderer.text('AVERAGE GLUCOSE:', 0).add();
             avgLabel.attr({
               ...attrs,
               x: labelX,
-              y: chartPaddingTop + lineHeight * 2,
+              y: chartPaddingTop + lineHeight,
             });
             const avgValue = this.renderer.text(`<b>${chartAvg}</b>`, 0).add();
             avgValue.attr({
               ...attrs,
               x: valueX,
-              y: chartPaddingTop + lineHeight * 2,
+              y: chartPaddingTop + lineHeight,
             });
 
-            const ttbLabel = this.renderer.text('TIME TO BASELINE:', 0).add();
-            ttbLabel.attr({
-              ...attrs,
-              x: labelX,
-              y: chartPaddingTop + lineHeight * 3,
-            });
-            const ttbValue = this.renderer
+            const deltaLabelAndValue = this.renderer
               .text(
-                `<b>${
-                  timeToBaseline !== -1
-                    ? moment
-                        .duration(timeToBaseline, 'milliseconds')
-                        .format(() =>
-                          timeToBaseline > 60 * 60 * 1000
-                            ? 'h[h] m[m]'
-                            : 'm[m]',
-                        )
+                `&Delta; = <b>${
+                  baselineValue !== undefined
+                    ? (chartMaxValue - baselineValue).toFixed(1)
                     : 'N/A'
                 }</b>`,
                 0,
               )
               .add();
-            ttbValue.attr({
+            deltaLabelAndValue.attr({
               ...attrs,
-              x: valueX,
-              y: chartPaddingTop + lineHeight * 3,
+              x: labelX,
+              y: chartPaddingTop + lineHeight * 2,
             });
 
             ctx._qhLabels = [
-              ttpLabel,
-              ttpValue,
               maxLabel,
               maxValue,
               avgLabel,
               avgValue,
-              ttbLabel,
-              ttbValue,
+              deltaLabelAndValue,
             ];
           }
         },
@@ -716,11 +695,11 @@ function createHighchartsOptionsForCaseStudy(
         },
       ],
       plotLines: _.compact([
-        chartMax !== undefined
+        chartMaxValue !== undefined
           ? {
               color: '#aaa',
               dashStyle: 'Dot',
-              value: chartMax,
+              value: chartMaxValue,
               width: 2,
               zIndex: 2,
             }
@@ -739,26 +718,6 @@ function createHighchartsOptionsForCaseStudy(
       },
     },
   };
-}
-
-function calculateTimeToMax(data: [number, number][]): number {
-  const maxDataPoint = data.reduce<[number, number]>(
-    (acc, curr) => (curr[1] > acc[1] ? curr : acc),
-    [-1, Number.MIN_VALUE],
-  );
-  return maxDataPoint[0];
-}
-
-function calculateTimeToBaseline(
-  baseline: number,
-  data: [number, number][],
-): number {
-  for (const [t, v] of data) {
-    if (v <= baseline) {
-      return t;
-    }
-  }
-  return -1;
 }
 
 function formatDateTimeLong(millis: number, timezone: string) {
