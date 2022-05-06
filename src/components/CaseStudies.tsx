@@ -537,9 +537,7 @@ function createHighchartsOptionsForCaseStudy(
 
   const chartAvg =
     values.length > 0
-      ? ((values.reduce((sum, v) => sum + v, 0) * 10) / values.length).toFixed(
-          1,
-        )
+      ? (values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(1)
       : 'N/A';
   const [chartMaxTime, chartMaxValue] = data
     .flatMap((p) => p.data)
