@@ -835,7 +835,7 @@ function createHighchartsOptionsForDay(
         {
           color: 'rgba(65, 165, 105, 1)',
           dashStyle: 'Dash',
-          value: 5,
+          value: unitConfig.fromMmolL(5),
           width: 4,
           zIndex: 2,
         },
