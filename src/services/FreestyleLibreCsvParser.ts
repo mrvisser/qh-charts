@@ -1,5 +1,5 @@
-import csvParse from 'csv-parse';
 import moment from 'moment-timezone';
+import { parse as csvParse } from 'papaparse';
 
 import { CsvLocale, ParsedMetrics } from './ParsedMetrics';
 
@@ -36,14 +36,9 @@ export async function parseFreestyleLibreCsvFile(
 }
 
 async function parseCsv(content: string): Promise<CsvRecord[]> {
-  return await new Promise((accept, reject) => {
-    csvParse(
-      content.split('\n').slice(1).join('\n'),
-      { columns: true, relaxColumnCount: true },
-      (err, records: CsvRecord[]) =>
-        err !== undefined ? reject(err) : accept(records),
-    );
-  });
+  return csvParse<CsvRecord>(content.split('\n').slice(1).join('\n'), {
+    header: true,
+  }).data;
 }
 
 /** Parses the freestyle libre date/time format into ISO time UTC string. */

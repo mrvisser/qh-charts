@@ -2,10 +2,17 @@ env:
   es2020: true
 extends:
   - react-app
-  - react-app/jest
   - plugin:@typescript-eslint/recommended
-  - plugin:jest/all
   - prettier
+overrides:
+  - extends:
+      - plugin:jest/all
+    files: '**/*.spec.tsx'
+    rules:
+      jest/prefer-lowercase-title:
+        - error
+        - ignore:
+            - describe
 ignorePatterns:
   - build/
   - coverage/
@@ -46,10 +53,6 @@ rules:
   sort-keys-fix/sort-keys-fix: warn
   '@typescript-eslint/no-floating-promises': warn
   '@typescript-eslint/strict-boolean-expressions': warn
-  jest/lowercase-name:
-    - error
-    - ignore:
-        - describe
 settings:
   import/parsers:
     '@typescript-eslint/parser': [.ts, .tsx]

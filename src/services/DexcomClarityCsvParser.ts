@@ -1,5 +1,5 @@
-import csvParse from 'csv-parse';
 import moment from 'moment-timezone';
+import { parse as csvParse } from 'papaparse';
 
 import { CsvLocale, ParsedMetrics } from './ParsedMetrics';
 
@@ -30,14 +30,9 @@ export async function parseDexcomClarityCsvFile(
 }
 
 async function parseCsv(content: string): Promise<Record<string, string>[]> {
-  return await new Promise((accept, reject) => {
-    csvParse(
-      content,
-      { columns: true, relaxColumnCount: true },
-      (err, records: Record<string, string>[]) =>
-        err !== undefined ? reject(err) : accept(records),
-    );
-  });
+  return csvParse<Record<string, string>>(content, {
+    header: true,
+  }).data;
 }
 
 function validateRecords(

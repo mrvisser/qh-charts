@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { PropsWithChildren } from 'react';
 import styled from 'styled-components';
 
 import { useObservable } from '../hooks/useObservable';
@@ -10,7 +10,7 @@ const Container = styled.div`
   position: relative;
 `;
 
-export const FileDropZone: React.FC = ({ children }) => {
+export const FileDropZone: React.FC<PropsWithChildren> = ({ children }) => {
   const fileService = React.useContext(FileStoreContext);
   const [files] = useObservable(() => fileService.files$, [fileService], []);
   const [fileUploadEl, setFileUploadEl] = React.useState<HTMLInputElement>();
