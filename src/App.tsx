@@ -2,6 +2,7 @@ import React from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import reset from 'styled-reset';
 
+import { BloodBiomarkers } from './components/BloodBiomarkers';
 import { FileDropZone } from './components/FileDropZone';
 import { ReportSelector } from './components/ReportSelector';
 import { useObservable } from './hooks/useObservable';
@@ -40,12 +41,30 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 const Fullscreen = styled.div`
-  align-items: center;
+  align-items: stretch;
   display: flex;
   justify-content: center;
   min-height: 100%;
-  position: absolute;
-  min-width: 100%;
+`;
+
+const Option = styled.div`
+  display: flex;
+  flex: 0 0 50%;
+
+  &:first-child {
+    border-right: solid 1px #eee;
+  }
+
+  &:hover {
+    background-color: #eee;
+  }
+`;
+
+const OptionInner = styled.div`
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
 `;
 
 export type AppProps = {
@@ -60,6 +79,13 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
     [fileStore],
     [],
   );
+  const [view, setView] = React.useState<'report' | 'bloodBiomarkers'>();
+
+  React.useEffect(() => {
+    if (csvFiles.length > 0 && view === undefined) {
+      setView('report');
+    }
+  }, [csvFiles, view]);
 
   React.useEffect(() => {
     if (dataUrl !== undefined) {
@@ -71,28 +97,42 @@ const App: React.FC<AppProps> = ({ dataUrl }) => {
   }, [dataUrl, fileStore]);
 
   return (
-    <>
-      <GlobalStyle />
-      <FileStoreContext.Provider value={fileStore}>
-        <MetricsStoreContext.Provider value={metricsStore}>
-          <FileDropZone>
-            {csvFiles.length > 0 ? (
-              <ReportSelector />
-            ) : dataUrl === undefined ? (
-              <Fullscreen>
-                <span>
-                  Drag and drop a Blood Glucose CSV file to view charts.
-                </span>
-              </Fullscreen>
-            ) : (
-              <Fullscreen>
-                <span>Downloading data...</span>
-              </Fullscreen>
-            )}
-          </FileDropZone>
-        </MetricsStoreContext.Provider>
-      </FileStoreContext.Provider>
-    </>
+    <FileStoreContext.Provider value={fileStore}>
+      <MetricsStoreContext.Provider value={metricsStore}>
+        <GlobalStyle />
+        <Fullscreen>
+          {view === undefined ? (
+            <>
+              <Option>
+                <FileDropZone>
+                  {csvFiles.length > 0 ? (
+                    <ReportSelector />
+                  ) : dataUrl === undefined ? (
+                    <span>
+                      Drag and drop a Blood Glucose CSV file to view charts.
+                    </span>
+                  ) : (
+                    <span>Downloading data...</span>
+                  )}
+                </FileDropZone>
+              </Option>
+              <Option>
+                <OptionInner
+                  onClick={() => setView('bloodBiomarkers')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <span>Blood Biomarkers</span>
+                </OptionInner>
+              </Option>
+            </>
+          ) : view === 'report' ? (
+            <ReportSelector />
+          ) : (
+            <BloodBiomarkers />
+          )}
+        </Fullscreen>
+      </MetricsStoreContext.Provider>
+    </FileStoreContext.Provider>
   );
 };
 

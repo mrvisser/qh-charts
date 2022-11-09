@@ -5,6 +5,9 @@ import { useObservable } from '../hooks/useObservable';
 import { FileStoreContext } from '../services/FileStore';
 
 const Container = styled.div`
+  align-items: center;
+  display: flex;
+  justify-content: center;
   min-height: 100%;
   min-width: 100%;
   position: relative;

@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import './index.css';
 import App from './App';
@@ -10,11 +10,14 @@ import './setupVendorLibraries';
 const qs = new URLSearchParams(window.location.search);
 const dataUrl = qs.get('dataUrl');
 
-ReactDOM.render(
+const container = document.getElementById('root');
+if (container === null) {
+  throw new Error('Could not find react root');
+}
+createRoot(container).render(
   <React.StrictMode>
     <App dataUrl={typeof dataUrl === 'string' ? dataUrl : undefined} />
   </React.StrictMode>,
-  document.getElementById('root'),
 );
 
 // If you want to start measuring performance in your app, pass a function
