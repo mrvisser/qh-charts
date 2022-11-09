@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/qh-charts/static/css/main.0911b093.css",
-    "main.js": "/qh-charts/static/js/main.67196de9.js",
+    "main.js": "/qh-charts/static/js/main.053eb58f.js",
     "static/js/496.38b7520a.chunk.js": "/qh-charts/static/js/496.38b7520a.chunk.js",
     "index.html": "/qh-charts/index.html",
     "main.0911b093.css.map": "/qh-charts/static/css/main.0911b093.css.map",
-    "main.67196de9.js.map": "/qh-charts/static/js/main.67196de9.js.map",
+    "main.053eb58f.js.map": "/qh-charts/static/js/main.053eb58f.js.map",
     "496.38b7520a.chunk.js.map": "/qh-charts/static/js/496.38b7520a.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.0911b093.css",
-    "static/js/main.67196de9.js"
+    "static/js/main.053eb58f.js"
   ]
 }
