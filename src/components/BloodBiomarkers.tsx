@@ -134,7 +134,7 @@ export const BloodBiomarkers: React.FC = () => {
         {Object.entries(dataItems).map(([sectionKey, section]) => (
           <div key={sectionKey} style={{ width: '100%' }}>
             <h3>{section.title}</h3>
-            {Object.entries(section.items).map(([itemKey, item]) => {
+            {Object.entries(section.items).map(([itemKey, item], itemIndex) => {
               const value = dataValues?.[itemKey];
               const rangeKeys = Object.keys(item.ranges).slice(0, -1);
               const minValue = item.ranges[rangeKeys[0]];
@@ -145,9 +145,9 @@ export const BloodBiomarkers: React.FC = () => {
                     {itemKey}: {value} {item.unit}
                   </div>
                   <svg width="100%" height="25px">
-                    <linearGradient id="myGradient">
-                      {rangeKeys.map((rangeKey, i) => {
-                        const nextKey = rangeKeys[i + 1];
+                    <linearGradient id={`range-${itemIndex}`}>
+                      {rangeKeys.map((rangeKey, rangeIndex) => {
+                        const nextKey = rangeKeys[rangeIndex + 1];
                         const nextLowValue =
                           nextKey !== undefined
                             ? item.ranges[nextKey]
@@ -158,7 +158,7 @@ export const BloodBiomarkers: React.FC = () => {
                             ? lowValue + (nextLowValue - lowValue) / 2
                             : undefined;
                         const percent =
-                          i === 0
+                          rangeIndex === 0
                             ? 0
                             : midValue === undefined
                             ? 1
@@ -177,7 +177,7 @@ export const BloodBiomarkers: React.FC = () => {
                       width="100%"
                       height="100%"
                       rx="15"
-                      fill="url('#myGradient')"
+                      fill={`url('#range-${itemIndex}')`}
                     />
                   </svg>
                 </DataItemContainer>
