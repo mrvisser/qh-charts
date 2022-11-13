@@ -39,7 +39,9 @@ const SettingsSectionInputContainer = styled.label`
 `;
 
 const DataItemContainer = styled.div`
-  margin: 15px 0px;
+  margin: 30px 0px;
+  position: relative;
+  width: 100%;
 `;
 
 const ranges = mkRanges(
@@ -61,7 +63,7 @@ export const BloodBiomarkers: React.FC = () => {
         items: Record<
           string,
           {
-            ranges: Record<string, number>;
+            ranges: Record<string, number | null>;
             unit: string;
             calculate?: (values: Record<string, number>) => number | null;
           }
@@ -92,18 +94,7 @@ export const BloodBiomarkers: React.FC = () => {
             unit: 'pmol/L',
           },
           'Hemoglobin A1C': {
-            ranges: mkRanges(undefined, undefined, 2, 4.6, 5.3, 5.7, 8),
-            unit: '%',
-          },
-          'HOMA-%β': {
-            calculate: ({
-              'Glucose (fasting)': glucose,
-              'Insulin (fasting)': insulin,
-            }: Record<string, number>) =>
-              glucose !== undefined && insulin !== undefined
-                ? (20 * pmolL2iu(insulin)) / (glucose - 3.5)
-                : null,
-            ranges: mkRanges(undefined, 35, 70, 90, 110, 120, 150),
+            ranges: mkRanges(undefined, null, 2, 4.6, 5.3, 5.7, 8),
             unit: '%',
           },
           'HOMA-IR': {
@@ -120,21 +111,8 @@ export const BloodBiomarkers: React.FC = () => {
           eAG: {
             calculate: ({ 'Hemoglobin A1C': a1c }: Record<string, number>) =>
               a1c !== undefined ? mgdL2mmolL(a1c * 28.7 - 46.7) : null,
-            ranges: mkRanges(undefined, 3, 4.55, 4.72, 5.83, 8.55, 10),
+            ranges: mkRanges(undefined, 4, 4.55, 4.72, 5.83, 8.55, 10),
             unit: 'mmol/L',
-          },
-          QUICKI: {
-            calculate: ({
-              'Glucose (fasting)': glucose,
-              'Insulin (fasting)': insulin,
-            }: Record<string, number>) =>
-              glucose !== undefined && insulin !== undefined
-                ? 1 /
-                  (Math.log10(pmolL2iu(insulin)) +
-                    Math.log10(mmolL2mgdL(glucose)))
-                : null,
-            ranges: mkRanges(undefined, 0.1, 0.34, 0.45, 5, 8),
-            unit: 'Index',
           },
         },
         title: 'Blood Glucose',
@@ -176,55 +154,130 @@ export const BloodBiomarkers: React.FC = () => {
               <h3>{section.title}</h3>
               {Object.entries(section.items).map(
                 ([itemKey, item], itemIndex) => {
+                  const itemRanges = Object.entries(item.ranges) as [
+                    string,
+                    number | null,
+                  ][];
+
+                  const sections = itemRanges.filter(
+                    (kv): kv is [string, number] => kv[1] !== null,
+                  );
+
                   const valueFn =
                     item.calculate ?? ((values) => values[itemKey] ?? null);
                   const value = valueFn(dataValues);
-                  const rangeKeys = Object.keys(item.ranges).slice(0, -1);
-                  const minValue = item.ranges[rangeKeys[0]];
-                  const maxValue = item.ranges[rangeKeys.slice(-1)[0]];
-                  return value !== null ? (
-                    <DataItemContainer key={itemKey}>
-                      <div>
-                        {itemKey}: {value.toFixed(2)} {item.unit}
-                      </div>
-                      <svg width="100%" height="25px">
-                        <linearGradient id={`range-${itemIndex}`}>
-                          {rangeKeys.map((rangeKey, rangeIndex) => {
-                            const nextKey = rangeKeys[rangeIndex + 1];
-                            const nextLowValue =
-                              nextKey !== undefined
-                                ? item.ranges[nextKey]
-                                : undefined;
-                            const lowValue = item.ranges[rangeKey];
-                            const midValue =
-                              nextLowValue !== undefined
-                                ? lowValue + (nextLowValue - lowValue) / 2
-                                : undefined;
-                            const percent =
-                              rangeIndex === 0
-                                ? 0
-                                : midValue === undefined
-                                ? 1
-                                : (midValue - minValue) / (maxValue - minValue);
-                            return (
-                              <stop
-                                key={rangeKey}
-                                offset={`${percent * 100}%`}
-                                stopColor={ranges[rangeKey].color}
-                              />
-                            );
-                          })}
-                        </linearGradient>
-                        <rect
-                          x="0"
-                          width="100%"
-                          height="100%"
-                          rx="15"
-                          fill={`url('#range-${itemIndex}')`}
+                  if (value === null) {
+                    return null;
+                  }
+
+                  const valuePct = (value: number) => {
+                    const [, minValue] = sections[0];
+                    const [, maxValue] = sections.slice(-1)[0];
+                    if (value <= minValue) {
+                      return '0%';
+                    } else if (value >= maxValue) {
+                      return '100%';
+                    } else {
+                      const sectionIndex =
+                        sections.findIndex(([, v]) => value < v) - 1;
+                      const [, loValue] = sections[sectionIndex];
+                      const [, hiValue] = sections[sectionIndex + 1];
+                      const basePct =
+                        (sectionIndex / (sections.length - 1)) * 100;
+                      const sectionPct =
+                        ((value - loValue) / (hiValue - loValue)) *
+                        (1 / (sections.length - 1)) *
+                        100;
+                      return `${basePct + sectionPct}%`;
+                    }
+                  };
+
+                  return (
+                    <div key={itemKey}>
+                      <h4>
+                        {itemKey} &mdash; {value.toFixed(2)} {item.unit}
+                      </h4>
+                      <DataItemContainer key={itemKey}>
+                        <div
+                          style={{
+                            backgroundColor: 'white',
+                            border: 'solid 4px black',
+                            borderRadius: '26px',
+                            height: '26px',
+                            left: `calc(${valuePct(value)} - 18px)`,
+                            position: 'absolute',
+                            top: '-4px',
+                            width: '26px',
+                          }}
                         />
-                      </svg>
-                    </DataItemContainer>
-                  ) : null;
+                        <svg width="100%" height="25px">
+                          <linearGradient id={`range-${itemIndex}`}>
+                            {sections.map(([k, lowValue], rangeIndex) => {
+                              const [nextKey, nextLowValue] =
+                                sections[rangeIndex + 1] ?? [];
+                              if (nextKey === undefined) {
+                                return null;
+                              }
+
+                              const midValue =
+                                lowValue + (nextLowValue - lowValue) / 2;
+                              return (
+                                <stop
+                                  key={k}
+                                  offset={valuePct(midValue)}
+                                  stopColor={ranges[k].color}
+                                />
+                              );
+                            })}
+                          </linearGradient>
+                          <rect
+                            width="100%"
+                            height="100%"
+                            rx="15"
+                            fill={`url('#range-${itemIndex}')`}
+                          />
+                          {sections.map(([, v]) => (
+                            <rect
+                              height="25px"
+                              width="1px"
+                              x={valuePct(v)}
+                              fill="white"
+                            />
+                          ))}
+                        </svg>
+                        <div
+                          style={{
+                            display: 'flex',
+                            height: '25px',
+                            justifyContent: 'stretch',
+                            marginTop: '5px',
+                            width: '100%',
+                          }}
+                        >
+                          {sections.slice(0, -1).map(([k, v], i) => (
+                            <div
+                              style={{
+                                borderLeft:
+                                  i > 0 ? 'solid 1px #888' : undefined,
+                                flex: '1',
+                                textAlign: 'center',
+                                width: '1px',
+                              }}
+                            >
+                              <div>{ranges[k].label}</div>
+                              <div>
+                                {i === 0
+                                  ? `< ${v}`
+                                  : i === sections.length - 2
+                                  ? `> ${v}`
+                                  : `${v} - ${sections[i + 1][1]}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </DataItemContainer>
+                    </div>
+                  );
                 },
               )}
             </div>
@@ -246,7 +299,7 @@ export const BloodBiomarkers: React.FC = () => {
                   {itemKey}:{' '}
                   <InputText
                     defaultValue={dataValues?.[itemKey]?.toString() ?? ''}
-                    placeholder={item.ranges.O.toString()}
+                    placeholder={item.ranges.O?.toString()}
                     onBlur={(ev) => handleChange(itemKey, ev)}
                   />{' '}
                   {item.unit}
@@ -261,10 +314,6 @@ export const BloodBiomarkers: React.FC = () => {
 
 function pmolL2iu(pmolL: number) {
   return pmolL / 6;
-}
-
-function mmolL2mgdL(mmolL: number) {
-  return mmolL * 18;
 }
 
 function mgdL2mmolL(mgdL: number) {
