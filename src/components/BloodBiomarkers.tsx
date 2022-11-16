@@ -79,7 +79,7 @@ export const BloodBiomarkers: React.FC = () => {
       'Blood Glucose': {
         items: {
           'Glucose (fasting)': {
-            ranges: mkRanges(undefined, 2, 3.61, 4.16, 4.77, 5.5, 7),
+            ranges: mkRanges(undefined, 2.78, 3.61, 4.16, 4.77, 5.5, 16.65),
             unit: 'mmol/L',
           },
           'Insulin (fasting)': {
@@ -90,12 +90,12 @@ export const BloodBiomarkers: React.FC = () => {
               13.89,
               34.72,
               136.11,
-              325,
+              175,
             ),
             unit: 'pmol/L',
           },
           'Hemoglobin A1C': {
-            ranges: mkRanges(undefined, null, 2, 4.6, 5.3, 5.7, 8),
+            ranges: mkRanges(undefined, null, 0, 4.6, 5.3, 5.7, 8.1),
             unit: '%',
           },
           'HOMA-IR': {
@@ -115,7 +115,7 @@ export const BloodBiomarkers: React.FC = () => {
             calculate: ({
               'Blood Glucose': { 'Hemoglobin A1C': a1c = NaN } = {},
             }) => (!isNaN(a1c) ? mgdL2mmolL(a1c * 28.7 - 46.7) : null),
-            ranges: mkRanges(undefined, 4, 4.55, 4.72, 5.83, 8.55, 10),
+            ranges: mkRanges(undefined, 2.78, 4.55, 4.72, 5.83, 8.55, 8.6),
             unit: 'mmol/L',
           },
         },
@@ -123,12 +123,32 @@ export const BloodBiomarkers: React.FC = () => {
       Renal: {
         items: {
           Creatinine: {
-            ranges: mkRanges(undefined, 12, 35.36, 70.72, 97.24, 132.6, 250),
+            ranges: mkRanges(undefined, 0, 35.36, 70.72, 97.24, 132.6, 221),
             unit: 'μmol/L',
           },
           eGFR: {
-            ranges: mkRanges(undefined, 20, 60, 90, 120, 160),
+            ranges: mkRanges(undefined, 29, 60, 90, 120, 160, 200),
             unit: 'mL/min/1.73m2',
+          },
+        },
+      },
+      Electrolytes: {
+        items: {
+          Sodium: {
+            ranges: mkRanges(undefined, null, 120, 135, 142, 146, 155),
+            unit: 'mmol/L',
+          },
+          Potassium: {
+            ranges: mkRanges(undefined, 3, 3.5, 4, 4.5, 5.3, 6),
+            unit: 'mmol/L',
+          },
+          Chloride: {
+            ranges: mkRanges(undefined, 9, 98, 100, 106, 110, 115),
+            unit: 'mmol/L',
+          },
+          CO2: {
+            ranges: mkRanges(undefined, 10, 19, 25, 30, 40, null),
+            unit: 'mmol/L',
           },
         },
       },
@@ -143,6 +163,18 @@ export const BloodBiomarkers: React.FC = () => {
               327.14,
               416.36,
               480,
+            ),
+            unit: 'μmol/L',
+          },
+          'Uric Acid - Male': {
+            ranges: mkRanges(
+              undefined,
+              118.96,
+              205.21,
+              208.18,
+              350.93,
+              475.84,
+              535.32,
             ),
             unit: 'μmol/L',
           },
@@ -222,7 +254,7 @@ export const BloodBiomarkers: React.FC = () => {
           'Trigliceride : HDL': {
             calculate: ({
               Lipids: {
-                Triglicerides: triglicerides = NaN,
+                Triglycerides: triglicerides = NaN,
                 'HDL Cholesterol': hdl = NaN,
               } = {},
             }) =>
@@ -254,6 +286,18 @@ export const BloodBiomarkers: React.FC = () => {
             ),
             unit: 'pmol/L',
           },
+          'Vitamin D (25-OH)': {
+            ranges: mkRanges(
+              undefined,
+              49.92,
+              74.88,
+              124.8,
+              224.64,
+              249.6,
+              324.48,
+            ),
+            unit: 'pmol/L',
+          },
         },
       },
       Hormones: {
@@ -282,12 +326,24 @@ export const BloodBiomarkers: React.FC = () => {
             ranges: mkRanges(undefined, 2.75, 3.8, 3.9, 4.5, 5.1, 7),
             unit: '10E12/L',
           },
+          'RBC - Male': {
+            ranges: mkRanges(undefined, null, 3.2, 4.2, 4.9, 5.8, 6.5),
+            unit: '10E12/L',
+          },
           'Hemoglobin - Female': {
             ranges: mkRanges(undefined, 50, 117, 135, 145, 155, 175),
             unit: 'g/L',
           },
+          'Hemoglobin - Male': {
+            ranges: mkRanges(undefined, 100, 132, 140, 150, 171, 180),
+            unit: 'g/L',
+          },
           'Hematocrit - Female': {
             ranges: mkRanges(undefined, 0.2, 0.35, 0.37, 0.44, 0.45, 0.6),
+            unit: 'Prop. of 1.0',
+          },
+          'Hematocrit - Male': {
+            ranges: mkRanges(undefined, 0.32, 0.38, 0.4, 0.48, 0.5, 0.52),
             unit: 'Prop. of 1.0',
           },
           MCV: {
@@ -420,6 +476,10 @@ export const BloodBiomarkers: React.FC = () => {
             ranges: mkRanges(undefined, null, null, 0, 42.86, 75.24, 100),
             unit: 'nmol/L',
           },
+          'Hs CRP - Male': {
+            ranges: mkRanges(undefined, null, null, 0, 5.24, 27.62, 57.14),
+            unit: 'nmol/L',
+          },
           'ESR - Female': {
             ranges: mkRanges(undefined, null, null, 0, 10, 20, 50),
             unit: 'mm/hr',
@@ -504,17 +564,17 @@ export const BloodBiomarkers: React.FC = () => {
                       return null;
                     }
 
-                    const valuePct = (value: number) => {
-                      const [, minValue] = sections[0];
-                      const [, maxValue] = sections.slice(-1)[0];
+                    const valueInfo = (value: number) => {
+                      const [minKey, minValue] = sections[0];
+                      const [maxKey, maxValue] = sections.slice(-1)[0];
                       if (value <= minValue) {
-                        return '0%';
+                        return { color: ranges[minKey].color, percent: '0%' };
                       } else if (value >= maxValue) {
-                        return '100%';
+                        return { color: ranges[maxKey].color, percent: '100%' };
                       } else {
                         const sectionIndex =
                           sections.findIndex(([, v]) => value < v) - 1;
-                        const [, loValue] = sections[sectionIndex];
+                        const [loKey, loValue] = sections[sectionIndex];
                         const [, hiValue] = sections[sectionIndex + 1];
                         const basePct =
                           (sectionIndex / (sections.length - 1)) * 100;
@@ -522,9 +582,13 @@ export const BloodBiomarkers: React.FC = () => {
                           ((value - loValue) / (hiValue - loValue)) *
                           (1 / (sections.length - 1)) *
                           100;
-                        return `${basePct + sectionPct}%`;
+                        const percent = `${basePct + sectionPct}%`;
+                        const color = ranges[loKey].color;
+                        return { color, percent };
                       }
                     };
+
+                    const info = valueInfo(value);
 
                     return (
                       <div key={itemKey}>
@@ -535,10 +599,10 @@ export const BloodBiomarkers: React.FC = () => {
                           <div
                             style={{
                               backgroundColor: 'white',
-                              border: 'solid 4px black',
+                              border: `solid 4px ${info.color}`,
                               borderRadius: '26px',
                               height: '26px',
-                              left: `calc(${valuePct(value)} - 18px)`,
+                              left: `calc(${info.percent} - 18px)`,
                               position: 'absolute',
                               top: '-4px',
                               width: '26px',
@@ -558,7 +622,7 @@ export const BloodBiomarkers: React.FC = () => {
                                 return (
                                   <stop
                                     key={k}
-                                    offset={valuePct(midValue)}
+                                    offset={valueInfo(midValue).percent}
                                     stopColor={ranges[k].color}
                                   />
                                 );
@@ -575,7 +639,7 @@ export const BloodBiomarkers: React.FC = () => {
                                 key={k}
                                 height="25px"
                                 width="1px"
-                                x={valuePct(v)}
+                                x={valueInfo(v).percent}
                                 fill="white"
                               />
                             ))}
