@@ -11,7 +11,8 @@ const Fullscreen = styled.div`
   display: flex;
   height: 100vh;
   justify-content: stretch;
-  max-width: 800px;
+  max-width: 900px;
+  padding-bottom: 2rem;
   width: 100vw;
 `;
 
@@ -38,10 +39,48 @@ const SettingsSectionInputContainer = styled.label`
   margin: 15px 0px;
 `;
 
+const SectionContainer = styled.div`
+  break-inside: avoid;
+  padding-top: 4rem;
+`;
+const SectionHeader = styled.h3`
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  border-bottom: solid 1px #ccc;
+  padding-bottom: 0.5rem;
+`;
+
 const DataItemContainer = styled.div`
-  margin: 30px 0px;
+  break-inside: avoid;
+  display: flex;
+  flex-direction: row;
+  margin-top: 2.5rem;
+`;
+const DataItemHeader = styled.h4`
+  flex: 0 0 25%;
+`;
+const DataItemHeaderTitle = styled.div`
+  margin-bottom: 0.5rem;
+`;
+const DataItemHeaderValueContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
+const DataItemHeaderValueNumber = styled.div`
+  font-size: 1.5rem;
+`;
+const DataItemHeaderValueUnit = styled.div`
+  align-self: flex-end;
+  font-size: 0.8rem;
+  margin-left: 5px;
+  padding-bottom: 0.1rem;
+`;
+const DataItemRangeContainer = styled.div`
+  flex: 1;
+  font-size: 0.8rem;
   position: relative;
-  width: 100%;
 `;
 
 const ranges = mkRanges(
@@ -539,149 +578,166 @@ export const BloodBiomarkers: React.FC = () => {
       </StalkingButtonGroup>
       <Fullscreen>
         <div style={{ width: '100%' }}>
-          {Object.entries(dataItems).map(([sectionKey, section]) =>
-            dataValues !== undefined &&
-            dataValues[sectionKey] !== undefined &&
-            Object.keys(dataValues[sectionKey]).length > 0 ? (
-              <div key={sectionKey} style={{ width: '100%' }}>
-                <h3>{sectionKey}</h3>
-                {Object.entries(section.items).map(
-                  ([itemKey, item], itemIndex) => {
-                    const itemRanges = Object.entries(item.ranges) as [
-                      string,
-                      number | null,
-                    ][];
+          {Object.entries(dataItems).map(
+            ([sectionKey, section], sectionIndex) =>
+              dataValues !== undefined &&
+              dataValues[sectionKey] !== undefined &&
+              Object.keys(dataValues[sectionKey]).length > 0 ? (
+                <SectionContainer key={sectionKey} style={{ width: '100%' }}>
+                  <SectionHeader>{sectionKey}</SectionHeader>
+                  {Object.entries(section.items).map(
+                    ([itemKey, item], itemIndex) => {
+                      const itemRanges = Object.entries(item.ranges) as [
+                        string,
+                        number | null,
+                      ][];
 
-                    const sections = itemRanges.filter(
-                      (kv): kv is [string, number] => kv[1] !== null,
-                    );
+                      const sections = itemRanges.filter(
+                        (kv): kv is [string, number] => kv[1] !== null,
+                      );
 
-                    const valueFn =
-                      item.calculate ??
-                      ((values) => values[sectionKey]?.[itemKey] ?? null);
-                    const value = valueFn(dataValues);
-                    if (value === null) {
-                      return null;
-                    }
-
-                    const valueInfo = (value: number) => {
-                      const [minKey, minValue] = sections[0];
-                      const [maxKey, maxValue] = sections.slice(-1)[0];
-                      if (value <= minValue) {
-                        return { color: ranges[minKey].color, percent: '0%' };
-                      } else if (value >= maxValue) {
-                        return { color: ranges[maxKey].color, percent: '100%' };
-                      } else {
-                        const sectionIndex =
-                          sections.findIndex(([, v]) => value < v) - 1;
-                        const [loKey, loValue] = sections[sectionIndex];
-                        const [, hiValue] = sections[sectionIndex + 1];
-                        const basePct =
-                          (sectionIndex / (sections.length - 1)) * 100;
-                        const sectionPct =
-                          ((value - loValue) / (hiValue - loValue)) *
-                          (1 / (sections.length - 1)) *
-                          100;
-                        const percent = `${basePct + sectionPct}%`;
-                        const color = ranges[loKey].color;
-                        return { color, percent };
+                      const valueFn =
+                        item.calculate ??
+                        ((values) => values[sectionKey]?.[itemKey] ?? null);
+                      const value = valueFn(dataValues);
+                      if (value === null) {
+                        return null;
                       }
-                    };
 
-                    const info = valueInfo(value);
+                      const valueInfo = (value: number) => {
+                        const [minKey, minValue] = sections[0];
+                        const [maxKey, maxValue] = sections.slice(-1)[0];
+                        if (value <= minValue) {
+                          return { color: ranges[minKey].color, percent: '0%' };
+                        } else if (value >= maxValue) {
+                          return {
+                            color: ranges[maxKey].color,
+                            percent: '100%',
+                          };
+                        } else {
+                          const sectionIndex =
+                            sections.findIndex(([, v]) => value < v) - 1;
+                          const [loKey, loValue] = sections[sectionIndex];
+                          const [, hiValue] = sections[sectionIndex + 1];
+                          const basePct =
+                            (sectionIndex / (sections.length - 1)) * 100;
+                          const sectionPct =
+                            ((value - loValue) / (hiValue - loValue)) *
+                            (1 / (sections.length - 1)) *
+                            100;
+                          const percent = `${basePct + sectionPct}%`;
+                          const color = ranges[loKey].color;
+                          return { color, percent };
+                        }
+                      };
 
-                    return (
-                      <div key={itemKey}>
-                        <h4>
-                          {itemKey} &mdash; {value.toFixed(2)} {item.unit}
-                        </h4>
+                      const info = valueInfo(value);
+
+                      return (
                         <DataItemContainer key={itemKey}>
-                          <div
-                            style={{
-                              backgroundColor: 'white',
-                              border: `solid 4px ${info.color}`,
-                              borderRadius: '26px',
-                              height: '26px',
-                              left: `calc(${info.percent} - 18px)`,
-                              position: 'absolute',
-                              top: '-4px',
-                              width: '26px',
-                            }}
-                          />
-                          <svg width="100%" height="25px">
-                            <linearGradient id={`range-${itemIndex}`}>
-                              {sections.map(([k, lowValue], rangeIndex) => {
-                                const [nextKey, nextLowValue] =
-                                  sections[rangeIndex + 1] ?? [];
-                                if (nextKey === undefined) {
-                                  return null;
-                                }
-
-                                const midValue =
-                                  lowValue + (nextLowValue - lowValue) / 2;
-                                return (
-                                  <stop
-                                    key={k}
-                                    offset={valueInfo(midValue).percent}
-                                    stopColor={ranges[k].color}
-                                  />
-                                );
-                              })}
-                            </linearGradient>
-                            <rect
-                              width="100%"
-                              height="100%"
-                              rx="15"
-                              fill={`url('#range-${itemIndex}')`}
+                          <DataItemHeader>
+                            <DataItemHeaderTitle>{itemKey}</DataItemHeaderTitle>
+                            <DataItemHeaderValueContainer>
+                              <DataItemHeaderValueNumber>
+                                {value.toFixed(2)}
+                              </DataItemHeaderValueNumber>
+                              <DataItemHeaderValueUnit>
+                                {item.unit}
+                              </DataItemHeaderValueUnit>
+                            </DataItemHeaderValueContainer>
+                          </DataItemHeader>
+                          <DataItemRangeContainer key={itemKey}>
+                            <div
+                              style={{
+                                backgroundColor: 'white',
+                                border: `solid 4px ${info.color}`,
+                                borderRadius: '26px',
+                                height: '26px',
+                                left: `calc(${info.percent} - 18px)`,
+                                position: 'absolute',
+                                top: '-7px',
+                                width: '26px',
+                              }}
                             />
-                            {sections.slice(1).map(([k, v]) => (
-                              <rect
-                                key={k}
-                                height="25px"
-                                width="1px"
-                                x={valueInfo(v).percent}
-                                fill="white"
-                              />
-                            ))}
-                          </svg>
-                          <div
-                            style={{
-                              display: 'flex',
-                              height: '25px',
-                              justifyContent: 'stretch',
-                              marginTop: '5px',
-                              width: '100%',
-                            }}
-                          >
-                            {sections.slice(0, -1).map(([k, v], i) => (
-                              <div
-                                key={k}
-                                style={{
-                                  borderLeft:
-                                    i > 0 ? 'solid 1px #888' : undefined,
-                                  flex: '1',
-                                  textAlign: 'center',
-                                  width: '1px',
-                                }}
+                            <svg width="100%" height="20px">
+                              <linearGradient
+                                id={`range-${sectionIndex}-${itemIndex}`}
                               >
-                                <div>{ranges[k].label}</div>
-                                <div>
-                                  {i === 0
-                                    ? `< ${sections[i + 1][1]}`
-                                    : i === sections.length - 2
-                                    ? `> ${v}`
-                                    : `${v} - ${sections[i + 1][1]}`}
+                                {sections.map(([k, lowValue], rangeIndex) => {
+                                  const [nextKey, nextLowValue] =
+                                    sections[rangeIndex + 1] ?? [];
+                                  if (nextKey === undefined) {
+                                    return null;
+                                  }
+
+                                  const midValue =
+                                    lowValue + (nextLowValue - lowValue) / 2;
+                                  return (
+                                    <stop
+                                      key={k}
+                                      offset={valueInfo(midValue).percent}
+                                      stopColor={ranges[k].color}
+                                    />
+                                  );
+                                })}
+                              </linearGradient>
+                              <rect
+                                width="100%"
+                                height="100%"
+                                rx="10"
+                                fill={`url('#range-${sectionIndex}-${itemIndex}')`}
+                              />
+                              {sections.slice(1).map(([k, v]) => (
+                                <rect
+                                  key={k}
+                                  height="25px"
+                                  width="1px"
+                                  x={valueInfo(v).percent}
+                                  fill="white"
+                                />
+                              ))}
+                            </svg>
+                            <div
+                              style={{
+                                display: 'flex',
+                                height: '25px',
+                                justifyContent: 'stretch',
+                                marginTop: '5px',
+                                width: '100%',
+                              }}
+                            >
+                              {sections.slice(0, -1).map(([k, v], i) => (
+                                <div
+                                  key={k}
+                                  style={{
+                                    borderLeft:
+                                      i > 0 ? 'solid 1px #888' : undefined,
+                                    flex: '1',
+                                    marginTop: '0.25rem',
+                                    textAlign: 'center',
+                                    width: '1px',
+                                  }}
+                                >
+                                  <div style={{ marginBottom: '0.24rem' }}>
+                                    {ranges[k].label}
+                                  </div>
+                                  <div>
+                                    {i === 0
+                                      ? `< ${sections[i + 1][1]}`
+                                      : i === sections.length - 2
+                                      ? `> ${v}`
+                                      : `${v} - ${sections[i + 1][1]}`}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          </DataItemRangeContainer>
                         </DataItemContainer>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            ) : null,
+                      );
+                    },
+                  )}
+                </SectionContainer>
+              ) : null,
           )}
         </div>
       </Fullscreen>
