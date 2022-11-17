@@ -56,7 +56,7 @@ const DataItemContainer = styled.div`
   break-inside: avoid;
   display: flex;
   flex-direction: row;
-  margin-top: 2.5rem;
+  padding: 2.5rem 0 1rem 0;
 `;
 const DataItemHeader = styled.h4`
   flex: 0 0 25%;
