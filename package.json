@@ -78,8 +78,8 @@
     "deploy": "gh-pages -d build",
     "lint": "eslint --max-warnings 0 .",
     "predeploy": "run-s build",
-    "start": "react-scripts start",
-    "test": "react-scripts test"
+    "start": "DISABLE_ESLINT_PLUGIN=true react-scripts start",
+    "test": "DISABLE_ESLINT_PLUGIN=true react-scripts test"
   },
   "browserslist": {
     "production": [
