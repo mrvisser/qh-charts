@@ -31,13 +31,19 @@ const SettingsSection = styled.div`
 
 const SettingsSectionTitle = styled.h2`
   font-size: 18px;
-  font-weight: 500;
+  font-weight: bold;
   margin-bottom: 25px;
+  text-transform: uppercase;
 `;
 
 const SettingsSectionInputContainer = styled.label`
+  display: flex;
+  flex-direction: row;
   margin: 15px 0px;
 `;
+const SettingsSectionInputLabel = styled.div``;
+const SettingsSectionInputTextField = styled.div``;
+const SettingsSectionInputUnit = styled.div``;
 
 const SectionContainer = styled.div`
   break-inside: avoid;
@@ -753,13 +759,19 @@ export const BloodBiomarkers: React.FC = () => {
               .filter(([, item]) => item.calculate === undefined)
               .map(([itemKey, item]) => (
                 <SettingsSectionInputContainer key={itemKey}>
-                  {itemKey}:{' '}
-                  <InputText
-                    defaultValue={dataValues?.[itemKey]?.toString() ?? ''}
-                    placeholder={item.ranges.O?.toString()}
-                    onBlur={(ev) => handleChange(sectionKey, itemKey, ev)}
-                  />{' '}
-                  {item.unit}
+                  <SettingsSectionInputLabel>
+                    {itemKey}:
+                  </SettingsSectionInputLabel>
+                  <SettingsSectionInputTextField>
+                    <InputText
+                      defaultValue={dataValues?.[itemKey]?.toString() ?? ''}
+                      placeholder={item.ranges.O?.toString()}
+                      onBlur={(ev) => handleChange(sectionKey, itemKey, ev)}
+                    />
+                  </SettingsSectionInputTextField>
+                  <SettingsSectionInputUnit>
+                    {item.unit}
+                  </SettingsSectionInputUnit>
                 </SettingsSectionInputContainer>
               ))}
           </SettingsSection>

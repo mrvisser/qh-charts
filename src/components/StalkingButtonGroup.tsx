@@ -1,4 +1,5 @@
 import Icon from '@mdi/react';
+import React from 'react';
 import styled from 'styled-components';
 
 const buttonSizePx = 75;
