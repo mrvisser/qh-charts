@@ -1,6 +1,6 @@
 import base64 from 'base64-js';
 import React from 'react';
-import { BehaviorSubject, combineLatest, Observable, of } from 'rxjs';
+import { BehaviorSubject, combineLatest, from, Observable } from 'rxjs';
 import { concatMap } from 'rxjs/operators';
 
 import {
@@ -49,11 +49,11 @@ export class MetricsStore {
     ])
       .pipe(
         concatMap(([files, customerDataTimeZone]) =>
-          of<() => Promise<MetricValue<number>[] | undefined>>(
+          from([
             // Whenever we get a new set of files, first emit undefined to signal that we should
             // enter a loading / "stale" state for all consumers
-            () => Promise.resolve(undefined),
-            async () => {
+            (): Promise<undefined> => Promise.resolve(undefined),
+            async (): Promise<MetricValue<number>[]> => {
               const csvs = files.map((file) => {
                 return new TextDecoder('utf-8')
                   .decode(base64.toByteArray(file.data))
@@ -77,7 +77,7 @@ export class MetricsStore {
                 }))
                 .sort((a, b) => a.time - b.time);
             },
-          ),
+          ]),
         ),
       )
       .pipe(concatMap((fn) => fn()));
