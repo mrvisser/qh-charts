@@ -293,8 +293,6 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 : overrideYMin,
           },
           false,
-          overallBloodGlucose ?? [],
-          0,
         ),
         title: 'Overall',
       };
@@ -325,8 +323,6 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 : overrideYMin,
           },
           true,
-          overallBloodGlucose ?? [],
-          entry.marker.value,
         ),
         subTitle: entry.title,
         title: formatDateTimeLong(entry.marker.value, timezone),
@@ -410,7 +406,10 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({
                 <div>{formatDateTimeShort(entry.marker.value, timezone)}</div>
                 <div>
                   <SettingsCaseStudyColorPreview
-                    onClick={() => setColorEditIndex(i0)}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setColorEditIndex(i0);
+                    }}
                     style={{ backgroundColor: entry.marker.color }}
                   >
                     {colorEditIndex === i0 ? (
@@ -530,38 +529,16 @@ function createHighchartsOptionsForCaseStudy(
     max: number;
   },
   includeLabels: boolean,
-  overallGlucose: [number, number][],
-  timeOffset: number,
 ): Highcharts.Options {
   const values = data.flatMap((p) => p.data).map((p) => p[1]);
-
   const chartAvg =
     values.length > 0
       ? (values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(1)
       : 'N/A';
-  const [chartMaxTime, chartMaxValue] = data
+  const [, chartMaxValue] = data
     .flatMap((p) => p.data)
     .reduce((acc, curr) => (curr[1] > acc[1] ? curr : acc), [0, 0]);
-  const chartMaxTimeAbs = timeOffset + chartMaxTime;
-
-  // Baseline value is one hour before glucose peak time
-  const baselineTime = chartMaxTimeAbs - 60 * 60 * 1000;
-  let baselineValue: number | undefined;
-  if (includeLabels) {
-    for (let i = 0; i < overallGlucose.length; i++) {
-      const [beforeTime, beforeValue] = overallGlucose[i];
-      const [afterTime] = overallGlucose[i + 1] ?? [0];
-      if (beforeTime <= baselineTime && afterTime > baselineTime) {
-        baselineValue = beforeValue;
-        break;
-      } else if (beforeTime > baselineTime) {
-        break;
-      }
-    }
-  }
-
   const hasLegend = data.length > 1;
-
   return {
     chart: {
       events: {
@@ -613,30 +590,7 @@ function createHighchartsOptionsForCaseStudy(
               x: valueX,
               y: chartPaddingTop + lineHeight,
             });
-
-            const deltaLabelAndValue = this.renderer
-              .text(
-                `&Delta; = <b>${
-                  baselineValue !== undefined
-                    ? (chartMaxValue - baselineValue).toFixed(1)
-                    : 'N/A'
-                }</b>`,
-                0,
-              )
-              .add();
-            deltaLabelAndValue.attr({
-              ...attrs,
-              x: labelX,
-              y: chartPaddingTop + lineHeight * 2,
-            });
-
-            ctx._qhLabels = [
-              maxLabel,
-              maxValue,
-              avgLabel,
-              avgValue,
-              deltaLabelAndValue,
-            ];
+            ctx._qhLabels = [maxLabel, maxValue, avgLabel, avgValue];
           }
         },
       },
