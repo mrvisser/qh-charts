@@ -31,6 +31,7 @@ const transforms: Record<
     {
       adjust: -1,
       from: '2022-12-17T05:00:00Z',
+      until: '2022-12-24T05:00:00Z',
     },
   ],
 
